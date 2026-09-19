@@ -30,6 +30,7 @@ const REPORT_REVENUE_DATA = [
 export default function Manager() {
   // GLOBAL STATES
   const [activeTab, setActiveTab] = useState('dishes');
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [toast, setToast] = useState(null);
 
   // DISHES STATES
@@ -46,8 +47,14 @@ export default function Manager() {
   const [supplierForm, setSupplierForm] = useState({ id: null, name: '', phone: '' });
 
   // REPORTS STATES
-  const [reportType, setReportType] = useState('revenue');
+  const [reportType, setReportType] = useState('revenue'); // revenue, inventory, topseller
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  // CLOCK EFFECT
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
 
@@ -167,7 +174,7 @@ export default function Manager() {
       
       {/* TAB 1: DISHES */}
       {activeTab === 'dishes' && (
-        <section className="space-y-6 animate-in fade-in duration-200 h-full">
+        <section className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2.5">
@@ -275,7 +282,7 @@ export default function Manager() {
 
       {/* TAB 2: SUPPLIERS */}
       {activeTab === 'suppliers' && (
-        <section className="space-y-6 animate-in fade-in duration-200 h-full">
+        <section className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2.5">
@@ -361,7 +368,7 @@ export default function Manager() {
 
       {/* TAB 3: REPORTS */}
       {activeTab === 'reports' && (
-        <section className="space-y-6 animate-in fade-in duration-200 h-full">
+        <section className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2.5">
@@ -394,8 +401,8 @@ export default function Manager() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Loại Báo Cáo:</label>
                 <div className="inline-flex p-1 bg-slate-100 rounded-lg w-full">
                   <button onClick={() => setReportType('revenue')} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'revenue' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Doanh Thu</button>
-                  <button onClick={() => {setReportType('inventory'); showToast('Mô-đun tồn kho đang cập nhật số liệu', true);}} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'inventory' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tồn Kho</button>
-                  <button onClick={() => {setReportType('topseller'); showToast('Mô-đun món bán chạy đang cập nhật', true);}} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'topseller' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bán Chạy</button>
+                  <button onClick={() => {setReportType('inventory'); showToast('Mô-đun tồn kho đang cập nhật số liệu');}} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'inventory' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tồn Kho</button>
+                  <button onClick={() => {setReportType('topseller'); showToast('Mô-đun món bán chạy đang cập nhật');}} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'topseller' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bán Chạy</button>
                 </div>
               </div>
               <div>
@@ -420,8 +427,9 @@ export default function Manager() {
             </div>
           </div>
 
+          {/* HIỂN THỊ NỘI DUNG TƯƠNG ỨNG VỚI LOẠI BÁO CÁO */}
           {reportType === 'revenue' && (
-            <>
+            <div className="space-y-6 animate-in fade-in duration-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG DOANH THU</span>
@@ -483,7 +491,23 @@ export default function Manager() {
                   </table>
                 </div>
               </div>
-            </>
+            </div>
+          )}
+
+          {reportType === 'inventory' && (
+            <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+              <svg className="w-12 h-12 text-slate-300 mb-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              <h3 className="text-lg font-bold text-slate-700">Đang cập nhật số liệu Tồn Kho</h3>
+              <p className="text-sm text-slate-500 mt-2 max-w-md">Mô-đun báo cáo tồn kho chuyên sâu đang được đồng bộ dữ liệu với bộ phận Kho. Vui lòng quay lại sau.</p>
+            </div>
+          )}
+
+          {reportType === 'topseller' && (
+            <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+              <svg className="w-12 h-12 text-slate-300 mb-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+              <h3 className="text-lg font-bold text-slate-700">Đang cập nhật số liệu Bán Chạy</h3>
+              <p className="text-sm text-slate-500 mt-2 max-w-md">Mô-đun phân tích hiệu suất món ăn bán chạy đang được xử lý. Vui lòng quay lại sau.</p>
+            </div>
           )}
         </section>
       )}
@@ -496,7 +520,7 @@ export default function Manager() {
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>
                 <h3 className="text-base font-bold text-slate-900">{dishForm.id ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Ăn Mới'}</h3>
-                <p className="text-xs text-slate-500">Cập nhật thông tin thực đơn chi nhánh</p>
+                <p className="text-xs text-slate-500">Cập nhật thông thực đơn chi nhánh</p>
               </div>
               <button onClick={() => setIsDishModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
