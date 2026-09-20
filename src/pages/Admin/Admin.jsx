@@ -192,7 +192,6 @@ export default function Admin() {
             <div>
               <div className="flex items-center space-x-3">
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Quản Lý Danh Sách Tài Khoản</h1>
-                <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800 font-mono">#SYS-AUTH</span>
               </div>
               <p className="text-sm text-slate-500 mt-1">Theo dõi, cấp mới và phân quyền tài khoản truy cập tương ứng cho nhân viên trong hệ thống.</p>
             </div>
@@ -307,7 +306,6 @@ export default function Admin() {
             <div>
               <div className="flex items-center space-x-3">
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Quản Lý Danh Sách Nhân Viên</h1>
-                <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800 font-mono">#SYS-STAFF</span>
               </div>
               <p className="text-sm text-slate-500 mt-1">Thông tin hồ sơ nhân sự, phân loại vai trò chuyên môn và số điện thoại liên lạc.</p>
             </div>

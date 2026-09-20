@@ -176,7 +176,6 @@ export default function Manager() {
             <div>
               <div className="flex items-center space-x-2.5">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Danh Sách Món Ăn</h1>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-medium border border-blue-200 font-mono">#MN-2026</span>
               </div>
               <p className="text-xs text-slate-500 mt-1">Theo dõi, thêm mới và cập nhật trạng thái món ăn trong thực đơn của nhà hàng</p>
             </div>
@@ -284,7 +283,6 @@ export default function Manager() {
             <div>
               <div className="flex items-center space-x-2.5">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Nhà Cung Cấp</h1>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-medium border border-blue-200 font-mono">#SUP-2026</span>
               </div>
               <p className="text-xs text-slate-500 mt-1">Theo dõi, cập nhật thông tin đối tác cung ứng</p>
             </div>
@@ -370,7 +368,6 @@ export default function Manager() {
             <div>
               <div className="flex items-center space-x-2.5">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trung Tâm Báo Cáo & Thống Kê</h1>
-                <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-medium border border-emerald-200 font-mono">#RP-MANAGER</span>
               </div>
               <p className="text-xs text-slate-500 mt-1">Tổng hợp số liệu doanh thu, hàng tồn kho và hiệu suất bán hàng của nhà hàng</p>
             </div>
