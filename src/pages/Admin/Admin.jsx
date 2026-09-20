@@ -427,7 +427,7 @@ export default function Admin() {
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Họ Và Tên Nhân Viên <span className="text-rose-500">*</span></label>
                 <select required value={accForm.employeeId} onChange={e => setAccForm({...accForm, employeeId: e.target.value})} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                   <option value="" disabled>-- Chọn nhân viên trong danh sách --</option>
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} — [{emp.role}]</option>)}
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>NV{String(emp.id).padStart(3, '0')} — {emp.name} — [{emp.role}]</option>)}
                 </select>
               </div>
               <div>
