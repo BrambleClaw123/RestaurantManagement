@@ -52,25 +52,6 @@ export default function Login() {
       <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern opacity-60"></div>
       <div className="fixed top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[360px] bg-blue-100/60 blur-3xl rounded-full pointer-events-none z-0"></div>
 
-      {/* Header */}
-      <header className="relative z-10 w-full px-6 py-6 sm:px-10 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-            </svg>
-          </div>
-          <div>
-            <span className="text-lg font-bold tracking-tight text-slate-900 block leading-tight">NexusCore</span>
-            <span className="text-xs text-slate-500 tracking-wider uppercase font-semibold">Enterprise System</span>
-          </div>
-        </div>
-        <div className="text-sm">
-          <span className="text-slate-500 hidden sm:inline">Cần hỗ trợ?</span>
-          <a className="font-medium text-blue-600 hover:text-blue-700 transition ml-1" href="#">Bộ phận IT</a>
-        </div>
-      </header>
-
       {/* Main Login Area */}
       <main className="relative z-10 flex-grow flex flex-col items-center justify-center px-4 py-8 sm:px-6">
         <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-2xl shadow-xl shadow-slate-200/50 p-8 sm:p-10 transition-all z-10">
@@ -170,17 +151,6 @@ export default function Login() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 py-5 px-6 text-center text-xs text-slate-500 border-t border-slate-200/50 bg-white/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© 2026 NexusCore Systems. Tất cả quyền được bảo lưu.</p>
-          <div className="flex space-x-6">
-            <a className="hover:text-slate-800 transition" href="#">Điều khoản bảo mật</a>
-            <a className="hover:text-slate-800 transition" href="#">Quy chế hệ thống</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
