@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 export default function Topbar({ title, subtitle, tagText, userInfo, shiftInfo, icon: Icon }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 z-30">
       <div className="flex items-center space-x-3">
@@ -27,11 +20,7 @@ export default function Topbar({ title, subtitle, tagText, userInfo, shiftInfo, 
         </div>
       </div>
       <div className="flex items-center space-x-6">
-        <div className="text-right hidden sm:block">
-          <div className="text-xs font-bold text-slate-700 font-mono">{currentTime.toLocaleTimeString('vi-VN')}</div>
-          <div className="text-xs text-slate-500 font-medium">{shiftInfo}</div>
-        </div>
-        <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
+        {shiftInfo && <div className="text-xs text-slate-500 font-medium hidden sm:block">{shiftInfo}</div>}
         <div className="flex items-center space-x-3 pl-4 sm:pl-0 sm:border-none border-l border-slate-200">
           <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
             {userInfo?.initials}
