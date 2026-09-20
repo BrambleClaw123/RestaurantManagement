@@ -244,7 +244,7 @@ export default function Admin() {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
                   <tr>
-                    <th className="py-3.5 px-6">TÊN ĐĂNG NHẬP</th><th className="py-3.5 px-6">MẬT KHẨU</th><th className="py-3.5 px-6">MÃ NHÂN VIÊN</th><th className="py-3.5 px-6">HỌ VÀ TÊN NHÂN VIÊN</th><th className="py-3.5 px-6">VAI TRÒ</th><th className="py-3.5 px-6 text-center">TRẠNG THÁI</th><th className="py-3.5 px-6 text-right">THAO TÁC</th>
+                    <th className="py-3.5 px-6">TÊN ĐĂNG NHẬP</th><th className="py-3.5 px-6">MẬT KHẨU</th><th className="py-3.5 px-6">MÃ TÀI KHOẢN</th><th className="py-3.5 px-6">HỌ VÀ TÊN NHÂN VIÊN</th><th className="py-3.5 px-6">VAI TRÒ</th><th className="py-3.5 px-6 text-center">TRẠNG THÁI</th><th className="py-3.5 px-6 text-right">THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
@@ -267,7 +267,7 @@ export default function Admin() {
                             </button>
                           </div>
                         </td>
-                        <td className="py-3.5 px-6 font-mono text-sm font-bold text-blue-700">NV{String(emp.id).padStart(3, '0')}</td>
+                        <td className="py-3.5 px-6 font-mono text-sm font-bold text-blue-700">TK{String(acc.id).padStart(3, '0')}</td>
                         <td className="py-3.5 px-6 font-semibold text-slate-800">{emp.name}</td>
                         <td className="py-3.5 px-6">{getRoleBadge(emp.role)}</td>
                         <td className="py-3.5 px-6 text-center">
@@ -353,7 +353,7 @@ export default function Admin() {
             <div className="overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
-                  <tr><th className="py-3.5 px-6">HỌ VÀ TÊN</th><th className="py-3.5 px-6">VAI TRÒ</th><th className="py-3.5 px-6">SỐ ĐIỆN THOẠI</th><th className="py-3.5 px-6 text-center">TÀI KHOẢN LIÊN KẾT</th><th className="py-3.5 px-6 text-right">THAO TÁC</th></tr>
+                  <tr><th className="py-3.5 px-6">HỌ VÀ TÊN</th><th className="py-3.5 px-6">VAI TRÒ</th><th className="py-3.5 px-6 text-center">TÀI KHOẢN LIÊN KẾT</th><th className="py-3.5 px-6">MÃ NHÂN VIÊN</th><th className="py-3.5 px-6">SỐ ĐIỆN THOẠI</th><th className="py-3.5 px-6 text-right">THAO TÁC</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
                   {filteredEmployees.map(emp => {
@@ -369,18 +369,19 @@ export default function Admin() {
                           </div>
                         </td>
                         <td className="py-3.5 px-6">{getRoleBadge(emp.role)}</td>
-                        <td className="py-3.5 px-6 font-mono text-sm text-slate-600 font-medium">
-                          <div className="flex items-center space-x-1.5">
-                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                            <span>{emp.phone}</span>
-                          </div>
-                        </td>
                         <td className="py-3.5 px-6 text-center">
                           {acc ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold ${acc.status === 'ACTIVE' ? 'bg-slate-100 text-blue-700' : 'bg-rose-50 text-rose-600'}`}>@{acc.username}</span>
                           ) : (
                             <span className="text-xs text-amber-600 font-medium italic">Chưa cấp tài khoản</span>
                           )}
+                        </td>
+                        <td className="py-3.5 px-6 font-mono text-sm font-bold text-blue-700">NV{String(emp.id).padStart(3, '0')}</td>
+                        <td className="py-3.5 px-6 font-mono text-sm text-slate-600 font-medium">
+                          <div className="flex items-center space-x-1.5">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                            <span>{emp.phone}</span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-6 text-right">
                           <button onClick={() => openEmpModal(emp)} className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-sm">
@@ -390,7 +391,7 @@ export default function Admin() {
                       </tr>
                     );
                   })}
-                  {filteredEmployees.length === 0 && <tr><td colSpan="5" className="py-12 text-center text-slate-400 font-medium">Không tìm thấy nhân viên phù hợp</td></tr>}
+                  {filteredEmployees.length === 0 && <tr><td colSpan="6" className="py-12 text-center text-slate-400 font-medium">Không tìm thấy nhân viên phù hợp</td></tr>}
                 </tbody>
               </table>
             </div>
