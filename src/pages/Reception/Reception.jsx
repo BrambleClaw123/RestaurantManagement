@@ -12,11 +12,10 @@ const ALL_NEXUS_TABLES = [
 ];
 
 const INITIAL_BOOKINGS = [
-  // [THÊM MỚI] Bổ sung trường date cho dữ liệu mẫu
-  { id: 'RES-102', date: '2026-09-20', fullname: 'Nguyễn Văn Thịnh', phone: '0908 123 456', table: 'Bàn 02', adults: 4, children: 1, requirements: 'Bàn cạnh cửa sổ thoáng mát, chuẩn bị 1 ghế em bé', status: 'Đã xác nhận' },
-  { id: 'RES-108', date: '2026-09-20', fullname: 'Lê Hoàng Yến', phone: '0919 888 777', table: 'Bàn 08', adults: 2, children: 0, requirements: 'Không gian yên tĩnh, kỷ niệm ngày cưới', status: 'Đã xác nhận' },
-  { id: 'RES-115', date: '2026-09-21', fullname: 'Phạm Quốc Bảo', phone: '0933 555 666', table: 'Bàn 09', adults: 6, children: 2, requirements: 'Bàn dài liên kết, mang theo bánh kem sinh nhật', status: 'Đã xác nhận' },
-  { id: 'RES-120', date: '2026-09-22', fullname: 'Đặng Thu Hương', phone: '0977 444 333', table: 'Bàn 04', adults: 3, children: 0, requirements: 'Dị ứng hải sản cay, cần tư vấn món thanh đạm', status: 'Đã xác nhận' }
+  { id: 'RES-102', date: '2026-09-20', time: '18:30', fullname: 'Nguyễn Văn Thịnh', phone: '0908 123 456', table: 'Bàn 02', adults: 4, children: 1, requirements: 'Bàn cạnh cửa sổ thoáng mát, chuẩn bị 1 ghế em bé', status: 'Đã xác nhận' },
+  { id: 'RES-108', date: '2026-09-20', time: '19:00', fullname: 'Lê Hoàng Yến', phone: '0919 888 777', table: 'Bàn 08', adults: 2, children: 0, requirements: 'Không gian yên tĩnh, kỷ niệm ngày cưới', status: 'Đã xác nhận' },
+  { id: 'RES-115', date: '2026-09-21', time: '18:00', fullname: 'Phạm Quốc Bảo', phone: '0933 555 666', table: 'Bàn 09', adults: 6, children: 2, requirements: 'Bàn dài liên kết, mang theo bánh kem sinh nhật', status: 'Đã xác nhận' },
+  { id: 'RES-120', date: '2026-09-22', time: '12:15', fullname: 'Đặng Thu Hương', phone: '0977 444 333', table: 'Bàn 04', adults: 3, children: 0, requirements: 'Dị ứng hải sản cay, cần tư vấn món thanh đạm', status: 'Đã xác nhận' }
 ];
 
 const INITIAL_SERVING_TABLES = [
@@ -51,8 +50,14 @@ const INITIAL_SERVING_TABLES = [
 ];
 
 export default function Reception() {
-  // GLOBAL STATES
-  const [activeTab, setActiveTab] = useState('booking'); // 'booking' | 'billing'
+  const [activeTab, setActiveTab] = useState('booking');
+
+  // Helper lấy ngày & giờ mặc định hiện tại
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getCurrentTimeStr = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
 
   // BOOKING STATES
   const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
@@ -60,10 +65,16 @@ export default function Reception() {
   const [editFormData, setEditFormData] = useState(null);
   const [showEditAlert, setShowEditAlert] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  
-  // [THÊM MỚI] Bổ sung date vào form mặc định
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
-  const [createForm, setCreateForm] = useState({ fullname: '', phone: '', date: getTodayStr(), table: '', adults: 2, children: 0, requirements: '' });
+  const [createForm, setCreateForm] = useState({ 
+    fullname: '', 
+    phone: '', 
+    date: getTodayStr(), 
+    time: getCurrentTimeStr(), 
+    table: '', 
+    adults: 2, 
+    children: 0, 
+    requirements: '' 
+  });
 
   // BILLING STATES
   const [servingTables, setServingTables] = useState(INITIAL_SERVING_TABLES);
@@ -75,14 +86,12 @@ export default function Reception() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
-  // SYNC EDIT FORM WITH SELECTED BOOKING
   useEffect(() => {
     const booking = bookings.find(b => b.id === selectedBookingId);
     if (booking) setEditFormData({ ...booking });
     else setEditFormData(null);
   }, [selectedBookingId, bookings]);
 
-  // UTILITIES
   const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + ' đ';
 
   // --- BOOKING ACTIONS ---
@@ -119,8 +128,16 @@ export default function Reception() {
     setBookings([newBooking, ...bookings]);
     setSelectedBookingId(newId);
     setIsCreateModalOpen(false);
-    // [THÊM MỚI] Reset cả trường date
-    setCreateForm({ fullname: '', phone: '', date: getTodayStr(), table: '', adults: 2, children: 0, requirements: '' });
+    setCreateForm({ 
+      fullname: '', 
+      phone: '', 
+      date: getTodayStr(), 
+      time: getCurrentTimeStr(), 
+      table: '', 
+      adults: 2, 
+      children: 0, 
+      requirements: '' 
+    });
   };
 
   const openCreateModal = () => {
@@ -180,7 +197,6 @@ export default function Reception() {
     setPromoCodeInput('');
   };
 
-  // --- CẤU HÌNH LAYOUT ---
   const topbarProps = {
     title: "NexusCore Reception",
     subtitle: activeTab === 'booking' ? 'Quản Lý Đặt Bàn & Đón Tiếp' : 'Thanh Toán & Hóa Đơn Khách Hàng',
@@ -243,15 +259,15 @@ export default function Reception() {
                       </div>
                       <div className="mb-2">
                         <h4 className="text-base font-bold text-slate-900 group-hover:text-blue-600">{b.fullname}</h4>
-                        {/* [THÊM MỚI] Hiển thị Ngày đặt lên thẻ thông tin khách */}
-                        <div className="text-xs text-slate-500 flex items-center gap-3 mt-1 font-mono">
+                        
+                        <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 font-mono">
                           <span className="flex items-center gap-1">
                             <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                             {b.phone}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            {b.date || 'Chưa cập nhật'}
+                          <span className="flex items-center gap-1 text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">
+                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            {b.date} • {b.time}
                           </span>
                         </div>
                       </div>
@@ -279,7 +295,7 @@ export default function Reception() {
                     <h3 className="text-base font-bold text-slate-900">Chỉnh Sửa Phiếu Đặt</h3>
                     <span className="text-xs px-2 py-0.5 rounded font-mono font-semibold bg-blue-100 text-blue-700">#{selectedBookingId || '---'}</span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">Xem và chỉnh sửa trực tiếp thôngquan</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Xem và chỉnh sửa trực tiếp thông tin</p>
                 </div>
                 <button onClick={handleDeleteBooking} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors flex items-center gap-1 text-xs font-semibold" title="Xóa phiếu đặt bàn này">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -298,17 +314,23 @@ export default function Reception() {
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Họ và tên khách hàng <span className="text-rose-500">*</span></label>
                       <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" required type="text" value={editFormData.fullname} onChange={e => setEditFormData({...editFormData, fullname: e.target.value})} />
                     </div>
-                    {/* [THÊM MỚI] Gắn thêm Ngày đặt và SĐT lên cùng 1 hàng cho tiết kiệm không gian hoặc tách riêng (ở đây chia 2 cột cho đẹp) */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại <span className="text-rose-500">*</span></label>
+                      <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" required type="tel" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} />
+                    </div>
+                    
+                    {/* NGÀY ĐẶT & GIỜ ĐẶT (FORM CHỈNH SỬA) */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại <span className="text-rose-500">*</span></label>
-                        <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" required type="tel" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} />
-                      </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">Ngày đặt <span className="text-rose-500">*</span></label>
                         <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" required type="date" value={editFormData.date || ''} onChange={e => setEditFormData({...editFormData, date: e.target.value})} />
                       </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Giờ đặt <span className="text-rose-500">*</span></label>
+                        <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" required type="time" value={editFormData.time || ''} onChange={e => setEditFormData({...editFormData, time: e.target.value})} />
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Bàn được xếp <span className="text-rose-500">*</span></label>
                       <div className="relative">
@@ -551,17 +573,23 @@ export default function Reception() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Họ và tên khách hàng <span className="text-rose-500">*</span></label>
                 <input className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required type="text" value={createForm.fullname} onChange={e => setCreateForm({...createForm, fullname: e.target.value})} />
               </div>
-              {/* [THÊM MỚI] Gắn thêm Ngày đặt và SĐT lên cùng 1 hàng */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Số điện thoại <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required type="tel" value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} />
+              </div>
+              
+              {/* NGÀY ĐẶT & GIỜ ĐẶT (MODAL TẠO MỚI) */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Số điện thoại <span className="text-rose-500">*</span></label>
-                  <input className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required type="tel" value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} />
-                </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Ngày đặt <span className="text-rose-500">*</span></label>
                   <input className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required type="date" value={createForm.date} onChange={e => setCreateForm({...createForm, date: e.target.value})} />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Giờ đặt <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required type="time" value={createForm.time} onChange={e => setCreateForm({...createForm, time: e.target.value})} />
+                </div>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Chọn Bàn <span className="text-rose-500">*</span></label>
                 <select className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" required value={createForm.table} onChange={e => setCreateForm({...createForm, table: e.target.value})}>
