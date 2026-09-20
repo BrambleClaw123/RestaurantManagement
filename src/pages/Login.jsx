@@ -82,7 +82,7 @@ export default function Login() {
           <form className="space-y-5" onSubmit={handleLogin}>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="username">
-                Tên đăng nhập
+                Tên đăng nhậppp
               </label>
               <div className="relative rounded-lg shadow-sm">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
