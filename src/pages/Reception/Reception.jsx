@@ -198,9 +198,8 @@ export default function Reception() {
   };
 
   const topbarProps = {
-    title: "NexusCore Reception",
-    subtitle: activeTab === 'booking' ? 'Quản Lý Đặt Bàn & Đón Tiếp' : 'Thanh Toán & Hóa Đơn Khách Hàng',
-    tagText: "Hệ Thống Trực Tuyến",
+    title: "Reception",
+    tagText: "Trực Tuyến",
     shiftInfo: "CA TỐI (15:00 - 23:00)",
     userInfo: { name: "Nguyễn Mai A", role: "Lễ tân", initials: "MA" },
     icon: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
