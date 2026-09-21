@@ -409,7 +409,6 @@ export default function Admin() {
                 <h3 className="font-bold text-lg text-slate-900">{accForm.id ? 'Chỉnh Sửa Tài Khoản' : 'Thêm Mới Tài Khoản'}</h3>
                 <p className="text-xs text-slate-500 font-medium">Chọn nhân viên để tự động liên kết vai trò tương ứng</p>
               </div>
-              <button onClick={() => setIsAccModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form onSubmit={handleAccSave} className="p-6 space-y-4">
               <div>
@@ -465,7 +464,6 @@ export default function Admin() {
                 <h3 className="font-bold text-lg text-slate-900">{empForm.id ? 'Chỉnh Sửa Nhân Viên' : 'Thêm Mới Nhân Viên'}</h3>
                 <p className="text-xs text-slate-500 font-medium">Cập nhật hồ sơ nhân sự vào cơ sở dữ liệu nhà hàng</p>
               </div>
-              <button onClick={() => setIsEmpModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form onSubmit={handleEmpSave} className="p-6 space-y-4">
               <div>

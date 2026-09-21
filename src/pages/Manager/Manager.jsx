@@ -507,7 +507,6 @@ export default function Manager() {
                 <h3 className="text-base font-bold text-slate-900">{dishForm.id ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Ăn Mới'}</h3>
                 <p className="text-xs text-slate-500">Cập nhật thông thực đơn chi nhánh</p>
               </div>
-              <button onClick={() => setIsDishModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveDish}>
               <div>
@@ -567,9 +566,6 @@ export default function Manager() {
                 <h3 className="text-base font-bold text-slate-900">{supplierForm.id ? 'Chỉnh Sửa Nhà Cung Cấp' : 'Thêm Nhà Cung Cấp Mới'}</h3>
                 <p className="text-xs text-slate-500">Cập nhật thông tin đối tác cung ứng</p>
               </div>
-              <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg" onClick={() => setIsSupplierModalOpen(false)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
             </div>
             <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveSupplier}>
               <div>

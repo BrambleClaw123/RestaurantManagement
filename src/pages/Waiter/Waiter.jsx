@@ -432,9 +432,6 @@ export default function Waiter() {
                 </h3>
                 <p className="text-xs text-slate-500">Chọn món ăn, đồ uống cần thêm và ghi chú riêng</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
             </div>
 
             <div className="px-5 py-2 border-b border-slate-100 bg-white flex space-x-2 overflow-x-auto text-xs font-medium">
