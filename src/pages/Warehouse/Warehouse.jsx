@@ -57,6 +57,7 @@ export default function Warehouse() {
   const [receiptSearch, setReceiptSearch] = useState('');
   const [editingReceiptId, setEditingReceiptId] = useState(null);
   const [viewingReceipt, setViewingReceipt] = useState(null);
+  const [editingReceipt, setEditingReceipt] = useState(null);
 
   // TAB 3: REPORT STATES
   const [reportCode, setReportCode] = useState('#BC-2026-0042');
@@ -148,12 +149,43 @@ export default function Warehouse() {
   };
 
   const handleEditReceipt = (receipt) => {
-    setEditingReceiptId(receipt.id);
-    setReceiptCode(receipt.code);
-    setSupplier(receipt.supplier);
-    setImportReason(receipt.reason);
-    setReceiptRows(receipt.rows);
-    setActiveTab('receipt');
+    setEditingReceipt({ ...receipt, rows: receipt.rows.map(row => ({ ...row })) });
+  };
+
+  const handleEditReceiptRowChange = (id, field, value) => {
+    setEditingReceipt(prev => ({
+      ...prev,
+      rows: prev.rows.map(row => {
+        if (row.id !== id) return row;
+        const updatedRow = { ...row, [field]: value };
+        if (field === 'matName') {
+          const matchedItem = AVAILABLE_MATERIALS.find(item => item.name === value);
+          if (matchedItem) {
+            updatedRow.unit = matchedItem.unit;
+            updatedRow.price = matchedItem.defaultPrice;
+          }
+        }
+        return updatedRow;
+      })
+    }));
+  };
+
+  const handleSaveEditedReceipt = () => {
+    if (!editingReceipt || editingReceipt.rows.length === 0) {
+      showToast('Lỗi Cập Nhật Phiếu', 'Vui lòng giữ lại ít nhất một nguyên vật liệu trong phiếu nhập!', true);
+      return;
+    }
+
+    const total = editingReceipt.rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.price) || 0), 0);
+    const updatedReceipt = {
+      ...editingReceipt,
+      supplierName: supplierNames[editingReceipt.supplier],
+      total
+    };
+
+    setReceiptList(prev => prev.map(receipt => receipt.id === updatedReceipt.id ? updatedReceipt : receipt));
+    setEditingReceipt(null);
+    showToast('Đã Cập Nhật Phiếu Nhập Kho!', `Phiếu ${updatedReceipt.code} đã được cập nhật thành công.`);
   };
 
   const handleViewReceipt = (receipt) => {
@@ -734,6 +766,97 @@ export default function Warehouse() {
 
             <div className="px-6 py-4 border-t border-slate-200 flex justify-end bg-white">
               <button onClick={() => setViewingReceipt(null)} className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RECEIPT EDIT MODAL */}
+      {editingReceipt && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <div className="flex items-center space-x-2.5">
+                  <h3 className="font-bold text-lg text-slate-900">Sửa Phiếu Nhập Kho</h3>
+                  <span className="px-2.5 py-0.5 rounded-md font-mono text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">{editingReceipt.code}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">Chỉnh sửa thông tin và danh mục hàng nhập trực tiếp</p>
+              </div>
+              <button onClick={() => setEditingReceipt(null)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors" title="Đóng">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Nhà cung cấp</label>
+                  <select value={editingReceipt.supplier} onChange={e => setEditingReceipt(prev => ({ ...prev, supplier: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="megafood">Công ty TNHH Thực Phẩm Tươi Sống MegaFood</option>
+                    <option value="cpfood">Tập đoàn Chăn nuôi & Thực phẩm CP Food Việt Nam</option>
+                    <option value="dalatgap">Đại lý Nông sản Đà Lạt Gap</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Lý do nhập kho</label>
+                  <input value={editingReceipt.reason} onChange={e => setEditingReceipt(prev => ({ ...prev, reason: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" type="text" />
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Danh mục hàng nhập</h4>
+                  <button onClick={() => setEditingReceipt(prev => ({ ...prev, rows: [...prev.rows, { id: Date.now(), matName: AVAILABLE_MATERIALS[0].name, unit: AVAILABLE_MATERIALS[0].unit, quantity: 1, price: AVAILABLE_MATERIALS[0].defaultPrice }] }))} className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
+                    Thêm nguyên vật liệu
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3 px-3 text-center w-12">#</th>
+                        <th className="py-3 px-3 min-w-[210px]">Nguyên vật liệu</th>
+                        <th className="py-3 px-3 text-center">Đơn vị</th>
+                        <th className="py-3 px-3 text-right">Số lượng</th>
+                        <th className="py-3 px-3 text-right">Đơn giá (đ)</th>
+                        <th className="py-3 px-3 text-right">Thành tiền (đ)</th>
+                        <th className="py-3 px-3 w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {editingReceipt.rows.map((row, index) => (
+                        <tr key={row.id}>
+                          <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-400">{index + 1}</td>
+                          <td className="py-2.5 px-3">
+                            <select value={row.matName} onChange={e => handleEditReceiptRowChange(row.id, 'matName', e.target.value)} className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-md py-1.5 px-2 outline-none focus:ring-1 focus:ring-blue-500">
+                              {AVAILABLE_MATERIALS.map(material => <option key={material.id} value={material.name}>{material.name}</option>)}
+                            </select>
+                          </td>
+                          <td className="py-2.5 px-3 text-center"><span className="inline-block px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">{row.unit}</span></td>
+                          <td className="py-2.5 px-3 text-right"><input type="number" min="1" step="any" value={row.quantity} onChange={e => handleEditReceiptRowChange(row.id, 'quantity', e.target.value)} className="w-20 text-right text-xs font-mono font-medium text-slate-800 bg-white border border-slate-200 rounded-md py-1.5 px-2 outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                          <td className="py-2.5 px-3 text-right"><input type="number" min="0" step="1000" value={row.price} onChange={e => handleEditReceiptRowChange(row.id, 'price', e.target.value)} className="w-28 text-right text-xs font-mono font-medium text-slate-800 bg-white border border-slate-200 rounded-md py-1.5 px-2 outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 text-xs">{formatCurrency((Number(row.quantity) || 0) * (Number(row.price) || 0))}</td>
+                          <td className="py-2.5 px-3 text-center"><button onClick={() => setEditingReceipt(prev => ({ ...prev, rows: prev.rows.filter(item => item.id !== row.id) }))} className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Xóa dòng"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-4 py-4 bg-slate-50/70 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Số lượng mặt hàng nhập: <span className="font-bold text-slate-700">{editingReceipt.rows.length}</span> món</span>
+                  <div className="text-right">
+                    <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng tiền thanh toán:</span>
+                    <div className="text-xl font-black text-blue-600 tracking-tight font-mono">{formatCurrency(editingReceipt.rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.price) || 0), 0))}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 bg-white">
+              <button onClick={() => setEditingReceipt(null)} className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Hủy</button>
+              <button onClick={handleSaveEditedReceipt} className="inline-flex items-center px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all"><svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>Lưu thay đổi</button>
             </div>
           </div>
         </div>
