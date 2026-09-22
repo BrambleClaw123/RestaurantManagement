@@ -48,7 +48,7 @@ export default function Kitchen() {
   };
 
   const handleRefreshOrders = () => {
-    showToast('Đã đồng bộ đơn mới nhất từ máy chủ POS!');
+    showToast('Đã đồng bộ đơn mới nhất từ máy chủ!');
   };
 
   // --- MENU ACTIONS ---
@@ -56,7 +56,7 @@ export default function Kitchen() {
     setMenuItems(prev => prev.map(dish => {
       if (dish.id === dishId) {
         const newStatus = !dish.isAvailable;
-        showToast(newStatus ? 'Đã mở lại món trên hệ thống POS.' : 'Đã báo hết món tới quầy thu ngân.');
+        showToast(newStatus ? 'Đã mở lại món trên hệ thống.' : 'Đã báo hết món tới quầy thu ngân.');
         return { ...dish, isAvailable: newStatus };
       }
       return dish;
@@ -103,7 +103,7 @@ export default function Kitchen() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Danh sách</h1>
             <button onClick={handleRefreshOrders} className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-slate-200 transition shadow-sm">
               <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Đồng bộ POS
+              Đồng bộ
             </button>
           </div>
 
