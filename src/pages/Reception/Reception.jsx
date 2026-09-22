@@ -64,6 +64,7 @@ export default function Reception() {
   const [selectedBookingId, setSelectedBookingId] = useState(INITIAL_BOOKINGS[0]?.id);
   const [editFormData, setEditFormData] = useState(null);
   const [showEditAlert, setShowEditAlert] = useState(false);
+  const [showCreateSuccess, setShowCreateSuccess] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ 
     fullname: '', 
@@ -128,6 +129,8 @@ export default function Reception() {
     setBookings([newBooking, ...bookings]);
     setSelectedBookingId(newId);
     setIsCreateModalOpen(false);
+    setShowCreateSuccess(true);
+    setTimeout(() => setShowCreateSuccess(false), 3000);
     setCreateForm({ 
       fullname: '', 
       phone: '', 
@@ -554,6 +557,13 @@ export default function Reception() {
       </div>
 
       {/* MODALS */}
+      {showCreateSuccess && (
+        <div className="fixed top-5 right-5 z-[60] p-3 rounded-lg text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-lg flex items-center gap-2">
+          <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>
+          <span>Đã thêm phiếu đặt bàn thành công</span>
+        </div>
+      )}
+
       {/* 1. Modal Thêm Phiếu Đặt Bàn */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center">
