@@ -9,7 +9,7 @@ const INITIAL_DISHES = [
   { id: 4, name: "Nem cua bể Hải Phòng", category: "Khai vị", unit: "Đĩa", price: 120000, status: "active" },
   { id: 5, name: "Sinh tố xoài cát Hòa Lộc", category: "Tráng miệng & Đồ uống", unit: "Ly", price: 55000, status: "active" },
   { id: 22, name: "Bò Wagyu A5 nướng than hoa", category: "Lẩu & Nướng", unit: "Phần", price: 680000, status: "inactive" },
-  { id: 23, name: "Cua tuyết hấp gừng hành", category: "Món chính", unit: "Con", price: 850000, status: "inactive" }
+  { id: 23, name: "Cua tuyết hấp gừng hành", category: "Món chính", unit: "Phần", price: 850000, status: "inactive" }
 ];
 
 const INITIAL_SUPPLIERS = [
@@ -517,7 +517,13 @@ export default function Manager() {
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Đơn Vị Tính <span className="text-rose-500">*</span></label>
-                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" placeholder="Đĩa / Phần / Nồi / Ly" required type="text" value={dishForm.unit} onChange={e => setDishForm({...dishForm, unit: e.target.value})} />
+                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required value={dishForm.unit} onChange={e => setDishForm({...dishForm, unit: e.target.value})}>
+                    <option value="" disabled>Chọn đơn vị tính</option>
+                    <option value="Đĩa">Đĩa</option>
+                    <option value="Phần">Phần</option>
+                    <option value="Nồi">Nồi</option>
+                    <option value="Ly">Ly</option>
+                  </select>
                 </div>
               </div>
               <div>
