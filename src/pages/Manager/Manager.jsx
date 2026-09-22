@@ -58,7 +58,7 @@ export default function Manager() {
 
   // --- DISHES LOGIC ---
   const filteredDishes = dishes.filter(d => {
-    const matchSearch = d.name.toLowerCase().includes(dishSearch.toLowerCase()) || d.category.toLowerCase().includes(dishSearch.toLowerCase());
+    const matchSearch = d.name.toLowerCase().includes(dishSearch.toLowerCase());
     const matchCat = dishCategory === 'ALL' || d.category === dishCategory;
     return matchSearch && matchCat;
   });
@@ -198,7 +198,7 @@ export default function Manager() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input value={dishSearch} onChange={e => setDishSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm nhanh tên món hoặc loại món..." type="text" />
+                <input value={dishSearch} onChange={e => setDishSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm nhanh tên món..." type="text" />
               </div>
               <div className="w-full sm:w-56">
                 <select value={dishCategory} onChange={e => setDishCategory(e.target.value)} className="w-full py-2 pl-3 pr-8 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 font-medium">
