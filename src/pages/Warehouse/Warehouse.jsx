@@ -25,15 +25,20 @@ const AVAILABLE_MATERIALS = [
 ];
 
 const RAW_REPORT_DATASET = [
-  { code: 'NVL-BEEF-01', name: 'Thịt thăn bò Úc', category: 'meat_seafood', unit: 'kg', opening: 35.5, imported: 25.0, exported: 15.0, closing: 45.5, threshold: 15.0 },
-  { code: 'NVL-RICE-02', name: 'Gạo thơm ST25', category: 'spices_dry', unit: 'kg', opening: 80.0, imported: 60.0, exported: 20.0, closing: 120.0, threshold: 30.0 },
-  { code: 'NVL-EGG-03', name: 'Trứng gà Ba Huân', category: 'dairy_egg', unit: 'quả', opening: 150.0, imported: 100.0, exported: 215.0, closing: 35.0, threshold: 50.0 },
-  { code: 'NVL-OIL-04', name: 'Dầu ăn Simply 5L', category: 'spices_dry', unit: 'bình', opening: 14.0, imported: 10.0, exported: 6.0, closing: 18.0, threshold: 8.0 },
-  { code: 'NVL-BUTTER-05', name: 'Bơ lạt Anchor 1kg', category: 'dairy_egg', unit: 'khối', opening: 8.0, imported: 0.0, exported: 8.0, closing: 0.0, threshold: 5.0 },
-  { code: 'NVL-MILK-06', name: 'Sữa tươi thanh trùng Đà Lạt Milk', category: 'dairy_egg', unit: 'lít', opening: 20.0, imported: 30.0, exported: 18.0, closing: 32.0, threshold: 10.0 },
-  { code: 'NVL-SHRIMP-07', name: 'Tôm sú biển tươi sống', category: 'meat_seafood', unit: 'kg', opening: 12.0, imported: 10.0, exported: 7.8, closing: 14.2, threshold: 6.0 },
-  { code: 'NVL-MUSH-08', name: 'Nấm hương rừng khô', category: 'spices_dry', unit: 'kg', opening: 5.0, imported: 2.0, exported: 3.5, closing: 3.5, threshold: 5.0 }
+  { code: 'NVL-BEEF-01', name: 'Thịt thăn bò Úc', category: 'meat_seafood', unit: 'kg', imported: 25.0, currentStock: 45.5, threshold: 15.0 },
+  { code: 'NVL-RICE-02', name: 'Gạo thơm ST25', category: 'spices_dry', unit: 'kg', imported: 60.0, currentStock: 120.0, threshold: 30.0 },
+  { code: 'NVL-EGG-03', name: 'Trứng gà Ba Huân', category: 'dairy_egg', unit: 'quả', imported: 100.0, currentStock: 35.0, threshold: 50.0 },
+  { code: 'NVL-OIL-04', name: 'Dầu ăn Simply 5L', category: 'spices_dry', unit: 'bình', imported: 10.0, currentStock: 18.0, threshold: 8.0 },
+  { code: 'NVL-BUTTER-05', name: 'Bơ lạt Anchor 1kg', category: 'dairy_egg', unit: 'khối', imported: 0.0, currentStock: 0.0, threshold: 5.0 },
+  { code: 'NVL-MILK-06', name: 'Sữa tươi thanh trùng Đà Lạt Milk', category: 'dairy_egg', unit: 'lít', imported: 30.0, currentStock: 32.0, threshold: 10.0 },
+  { code: 'NVL-SHRIMP-07', name: 'Tôm sú biển tươi sống', category: 'meat_seafood', unit: 'kg', imported: 10.0, currentStock: 14.2, threshold: 6.0 },
+  { code: 'NVL-MUSH-08', name: 'Nấm hương rừng khô', category: 'spices_dry', unit: 'kg', imported: 2.0, currentStock: 3.5, threshold: 5.0 }
 ];
+ 
+const REPORT_PERIOD_RANGES = {
+  week_this: { tuNgay: '2026-09-15', denNgay: '2026-09-21' },
+  today: { tuNgay: '2026-09-25', denNgay: '2026-09-25' }
+};
 
 export default function Warehouse() {
   // GLOBAL STATES
@@ -76,8 +81,6 @@ export default function Warehouse() {
     setToast({ title, desc, isWarning });
     setTimeout(() => setToast(null), 3500);
   };
-
-  const currentDateStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   // --- TAB 1 LOGIC ---
   const filteredMaterials = MATERIALS_DATA.filter(m => 
@@ -129,10 +132,8 @@ export default function Warehouse() {
     const savedReceipt = {
       id: editingReceiptId || Date.now(),
       code: receiptCode,
-      date: currentDateStr,
       supplier,
       supplierName: supplierNames[supplier],
-      creator: 'Lê Hoàng Nam',
       reason: importReason,
       total: receiptGrandTotal,
       rows: receiptRows
@@ -198,7 +199,7 @@ export default function Warehouse() {
   };
 
   const filteredReceipts = receiptList.filter(receipt =>
-    [receipt.code, receipt.supplierName, receipt.creator].some(value => value.toLowerCase().includes(receiptSearch.toLowerCase()))
+    [receipt.code, receipt.supplierName].some(value => value.toLowerCase().includes(receiptSearch.toLowerCase()))
   );
 
   // --- TAB 3 LOGIC ---
@@ -213,18 +214,20 @@ export default function Warehouse() {
   );
 
   let reportSummaryText = '';
+  const reportDateRange = reportCriteria === 'period'
+    ? REPORT_PERIOD_RANGES[reportPeriod]
+    : { tuNgay: reportStartDate, denNgay: reportEndDate };
+
   if (reportCriteria === 'period') {
     if (reportPeriod === 'today') {
       filteredReportData = filteredReportData.slice(0, 6).map(item => ({
         ...item,
-        imported: +(item.imported * 0.2).toFixed(1),
-        exported: +(item.exported * 0.25).toFixed(1),
-        closing: +(item.opening + (item.imported * 0.2) - (item.exported * 0.25)).toFixed(1)
+        imported: +(item.imported * 0.2).toFixed(1)
       }));
     }
-    reportSummaryText = `Báo cáo theo kỳ | Đối soát dữ liệu kho tự động.`;
+    reportSummaryText = `Báo cáo theo kỳ từ ${reportDateRange.tuNgay} đến ${reportDateRange.denNgay} | Đối soát dữ liệu kho tự động.`;
   } else if (reportCriteria === 'date-range') {
-    reportSummaryText = `Báo cáo theo khoảng ngày: Từ ${reportStartDate} đến ${reportEndDate}.`;
+    reportSummaryText = `Báo cáo theo khoảng ngày: Từ ${reportDateRange.tuNgay} đến ${reportDateRange.denNgay}.`;
   } else if (reportCriteria === 'category') {
     if (reportCategory !== 'all') {
       filteredReportData = filteredReportData.filter(item => item.category === reportCategory);
@@ -233,12 +236,10 @@ export default function Warehouse() {
   }
 
   const reportTotals = filteredReportData.reduce((acc, curr) => {
-    acc.opening += curr.opening;
     acc.imported += curr.imported;
-    acc.exported += curr.exported;
-    acc.closing += curr.closing;
+    acc.currentStock += curr.currentStock;
     return acc;
-  }, { opening: 0, imported: 0, exported: 0, closing: 0 });
+  }, { imported: 0, currentStock: 0 });
 
   const handleFinalizeReport = () => {
     showToast('Đã Chốt Báo Cáo Tồn Kho Thành Công!', `Kỳ báo cáo ${reportCode} đã được chốt sổ tồn. Số liệu đã được đồng bộ lên hệ thống kế toán NexusCore.`);
@@ -295,7 +296,7 @@ export default function Warehouse() {
       {/* TAB 1: NGUYÊN VẬT LIỆU */}
       {activeTab === 'materials' && (
         <div className="space-y-5 animate-in fade-in duration-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng mặt hàng</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{MATERIALS_DATA.length}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"></path></svg></div>
@@ -383,7 +384,7 @@ export default function Warehouse() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
               </div>
-              <input value={receiptSearch} onChange={e => setReceiptSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600" placeholder="Tìm theo mã phiếu, nhà cung cấp, người lập..." type="text" />
+              <input value={receiptSearch} onChange={e => setReceiptSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600" placeholder="Tìm theo mã phiếu, nhà cung cấp..." type="text" />
             </div>
           </div>
 
@@ -393,9 +394,7 @@ export default function Warehouse() {
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Mã phiếu</th>
-                    <th className="py-3 px-4">Ngày nhập</th>
                     <th className="py-3 px-4 min-w-[220px]">Nhà cung cấp</th>
-                    <th className="py-3 px-4">Người lập</th>
                     <th className="py-3 px-4 text-right">Tổng tiền</th>
                     <th className="py-3 px-4 text-center">Thao tác</th>
                   </tr>
@@ -404,9 +403,7 @@ export default function Warehouse() {
                   {filteredReceipts.map(receipt => (
                     <tr key={receipt.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs font-bold text-blue-700">{receipt.code}</td>
-                      <td className="py-3 px-4 text-xs text-slate-600">{receipt.date}</td>
                       <td className="py-3 px-4 text-xs font-medium text-slate-800">{receipt.supplierName}</td>
-                      <td className="py-3 px-4 text-xs text-slate-600">{receipt.creator}</td>
                       <td className="py-3 px-4 text-right font-mono text-xs font-bold text-slate-900">{formatCurrency(receipt.total)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center space-x-2">
@@ -447,8 +444,6 @@ export default function Warehouse() {
               <p className="text-xs text-slate-500 mt-0.5">Tạo phiếu nhập và cập nhật tăng số lượng tồn nguyên liệu vào kho trực tiếp</p>
             </div>
             <div className="flex items-center space-x-3 text-xs">
-              <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600"><span className="text-slate-400">Ngày lập:</span> <span className="font-semibold text-slate-700">{currentDateStr}</span></div>
-              <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600"><span className="text-slate-400">Người lập:</span> <span className="font-semibold text-slate-700">Lê Hoàng Nam (Thủ kho)</span></div>
             </div>
           </div>
 
@@ -553,14 +548,11 @@ export default function Warehouse() {
                 <h2 className="text-lg font-bold text-slate-900">Lập Báo Cáo Tồn Kho</h2>
                 <span className="px-2.5 py-0.5 rounded-md font-mono text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">{reportCode}</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Báo cáo biến động Xuất - Nhập - Tồn chi tiết theo tiêu chí và chu kỳ hoạt động của kho</p>
-            </div>
-            <div className="flex items-center space-x-3 text-xs">
-              <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600"><span className="text-slate-400">Ngày lập:</span> <span className="font-semibold text-slate-700">{currentDateStr}</span></div>
+              <p className="text-xs text-slate-500 mt-0.5">Báo cáo nhập kho trong kỳ và số lượng tồn kho hiện tại theo tiêu chí đã chọn</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng mặt hàng</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{filteredReportData.length} <span className="text-xs font-normal text-slate-500">vật tư</span></h3></div>
               <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path></svg></div>
@@ -570,12 +562,8 @@ export default function Warehouse() {
               <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg></div>
             </div>
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng xuất</p><h3 className="text-2xl font-bold text-rose-600 mt-1">-{reportTotals.exported.toFixed(1)}</h3></div>
+              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tồn kho hiện tại</p><h3 className="text-2xl font-bold text-blue-600 mt-1">{reportTotals.currentStock.toFixed(1)}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"></path></svg></div>
-            </div>
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tồn cuối kỳ</p><h3 className="text-2xl font-bold text-blue-600 mt-1">{reportTotals.closing.toFixed(1)}</h3></div>
-              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg></div>
             </div>
           </div>
 
@@ -616,10 +604,8 @@ export default function Warehouse() {
                     <th className="py-3 px-3 w-32 font-mono">Mã vật tư</th>
                     <th className="py-3 px-4 min-w-[210px]">Tên nguyên vật liệu</th>
                     <th className="py-3 px-3 text-center w-20">ĐVT</th>
-                    <th className="py-3 px-3 text-right w-28">Tồn đầu kỳ</th>
                     <th className="py-3 px-3 text-right w-28 text-emerald-700 bg-emerald-50/30">Nhập trong kỳ</th>
-                    <th className="py-3 px-3 text-right w-36 text-rose-700 bg-rose-50/30">Xuất chế biến</th>
-                    <th className="py-3 px-3 text-right w-28 text-blue-900 bg-blue-50/30 font-bold">Tồn cuối kỳ</th>
+                    <th className="py-3 px-3 text-right w-36 text-blue-900 bg-blue-50/30 font-bold">Tồn kho hiện tại</th>
                     <th className="py-3 px-4 text-center w-36">Trạng thái</th>
                   </tr>
                 </thead>
@@ -627,10 +613,10 @@ export default function Warehouse() {
                   {filteredReportData.map((item, idx) => {
                     let statusTag = '';
                     let rowBg = 'hover:bg-slate-50/70 transition-colors';
-                    if (item.closing <= 0) {
+                    if (item.currentStock <= 0) {
                       statusTag = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">Hết hàng</span>;
                       rowBg += ' bg-rose-50/25';
-                    } else if (item.closing < item.threshold) {
+                    } else if (item.currentStock < item.threshold) {
                       statusTag = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Sắp hết</span>;
                       rowBg += ' bg-amber-50/25';
                     } else {
@@ -642,10 +628,8 @@ export default function Warehouse() {
                         <td className="py-2.5 px-3 font-mono text-xs font-semibold text-slate-600">{item.code}</td>
                         <td className="py-2.5 px-4 font-medium text-slate-900 text-xs">{item.name}</td>
                         <td className="py-2.5 px-3 text-center text-xs text-slate-600 font-medium">{item.unit}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-xs text-slate-700">{item.opening.toFixed(1)}</td>
                         <td className="py-2.5 px-3 text-right font-mono text-xs text-emerald-600 font-semibold bg-emerald-50/20">+{item.imported.toFixed(1)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-xs text-rose-600 bg-rose-50/20">-{item.exported.toFixed(1)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-xs font-bold text-slate-900 bg-blue-50/20">{item.closing.toFixed(1)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-xs font-bold text-slate-900 bg-blue-50/20">{item.currentStock.toFixed(1)}</td>
                         <td className="py-2.5 px-4 text-center">{statusTag}</td>
                       </tr>
                     );
@@ -654,10 +638,7 @@ export default function Warehouse() {
                 <tfoot>
                   <tr className="bg-slate-100/90 border-t-2 border-slate-300 font-semibold text-xs text-slate-800">
                     <td colSpan="4" className="py-3 px-4 text-slate-700 uppercase tracking-wider font-bold">Tổng cộng toàn kho:</td>
-                    <td className="py-3 px-3 text-right font-mono text-slate-600 font-medium">{reportTotals.opening.toFixed(1)}</td>
                     <td className="py-3 px-3 text-right font-mono text-emerald-700 font-bold bg-emerald-50/60">+{reportTotals.imported.toFixed(1)}</td>
-                    <td className="py-3 px-3 text-right font-mono text-rose-700 font-bold bg-rose-50/60">-{reportTotals.exported.toFixed(1)}</td>
-                    <td className="py-3 px-3 text-right font-mono text-blue-700 font-black text-sm bg-blue-50/60">{reportTotals.closing.toFixed(1)}</td>
                     <td className="py-3 px-4 text-center"><span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">Đã đối soát</span></td>
                   </tr>
                 </tfoot>
@@ -669,7 +650,7 @@ export default function Warehouse() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div className="text-xs text-slate-500 flex items-center space-x-1.5"><svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Sau khi chốt báo cáo, dữ liệu tồn cuối kỳ sẽ chuyển thành tồn đầu kỳ tiếp theo.</span></div>
+            <div className="text-xs text-slate-500 flex items-center space-x-1.5"><svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 01-18 0z"></path></svg><span>Tồn kho hiện tại được lấy trực tiếp từ dữ liệu tồn kho.</span></div>
             <div className="flex items-center space-x-3 relative">
               <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">In Báo Cáo</button>
               <div className="relative inline-block text-left">
@@ -705,18 +686,10 @@ export default function Warehouse() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs font-medium text-slate-500 mb-1">Nhà cung cấp</div>
                   <div className="text-sm font-semibold text-slate-800">{viewingReceipt.supplierName}</div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-slate-500 mb-1">Ngày nhập</div>
-                  <div className="text-sm font-semibold text-slate-800">{viewingReceipt.date}</div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-slate-500 mb-1">Người lập</div>
-                  <div className="text-sm font-semibold text-slate-800">{viewingReceipt.creator}</div>
                 </div>
                 <div>
                   <div className="text-xs font-medium text-slate-500 mb-1">Lý do nhập kho</div>
