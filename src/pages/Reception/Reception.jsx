@@ -426,7 +426,6 @@ export default function Reception() {
                         <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
                           <span className="flex items-center gap-1 font-mono"><svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>{item.phone}</span>
                           <span>•</span>
-                          <span className="flex items-center gap-1"><svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"></circle><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6l4 2"></path></svg>{item.seatedTime}</span>
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
@@ -457,7 +456,6 @@ export default function Reception() {
                         <span className="text-xs px-2 py-0.5 rounded font-mono font-semibold bg-amber-100 text-amber-800">#{selectedBill.orderCode}</span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                        <span>Khách: {selectedBill.customer}</span><span>•</span><span>Đã ngồi: {selectedBill.seatedTime}</span>
                       </p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">

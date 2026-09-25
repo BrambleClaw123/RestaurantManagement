@@ -5,19 +5,23 @@ import MainLayout from '../../components/layout/MainLayout';
 const INITIAL_ORDERS = [
   { 
     id: '204', table: 'Bàn 04', time: '14:20', 
-    items: [{ name: 'Bò Wagyu Áp Chảo Sốt Tiêu Đen', qty: 2, note: 'Không hành tây, độ chín Medium (Vừa tới).', urgent: true }]
+    items: [{ name: 'Bò Wagyu Áp Chảo Sốt Tiêu Đen', qty: 2 }],
+    notes: [{ dishName: 'Bò Wagyu Áp Chảo Sốt Tiêu Đen', text: 'Không hành tây, độ chín Medium (Vừa tới).', urgent: true }]
   },
   { 
     id: '208', table: 'Bàn 12', time: '08:12', 
-    items: [{ name: 'Cá Hồi Nướng Sốt Teriyaki', qty: 1, note: 'Ít muối, da nướng giòn rụm.', urgent: false }, { name: 'Salad Hoàng Gia', qty: 1, note: '', urgent: false }]
+    items: [{ name: 'Cá Hồi Nướng Sốt Teriyaki', qty: 1 }, { name: 'Salad Hoàng Gia', qty: 1 }],
+    notes: [{ dishName: 'Cá Hồi Nướng Sốt Teriyaki', text: 'Ít muối, da nướng giòn rụm.', urgent: false }]
   },
   { 
     id: '209', table: 'Bàn 07', time: '05:40', 
-    items: [{ name: 'Mì Ý Hải Sản Cay (Spaghetti)', qty: 3, note: 'Để riêng sốt cay, kèm phô mai rắc.', urgent: false }]
+    items: [{ name: 'Mì Ý Hải Sản Cay (Spaghetti)', qty: 3 }],
+    notes: [{ dishName: 'Mì Ý Hải Sản Cay (Spaghetti)', text: 'Để riêng sốt cay, kèm phô mai rắc.', urgent: false }]
   },
   { 
     id: '210', table: 'Bàn 09', time: '02:15', 
-    items: [{ name: 'Súp Bào Ngư Vi Cá Thượng Hạng', qty: 2, note: 'Nóng hổi, kèm giấm đỏ riêng.', urgent: false }]
+    items: [{ name: 'Súp Bào Ngư Vi Cá Thượng Hạng', qty: 2 }],
+    notes: [{ dishName: 'Súp Bào Ngư Vi Cá Thượng Hạng', text: 'Nóng hổi, kèm giấm đỏ riêng.', urgent: false }]
   }
 ];
 
@@ -130,18 +134,27 @@ export default function Kitchen() {
                   </div>
                   
                   <div className="p-4 flex-1 space-y-3 bg-white">
+                    {order.notes?.length > 0 && (
+                      <div className="p-3 rounded-lg border-l-4 bg-amber-50 border-amber-500 border-y border-r border-amber-200">
+                        <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide mb-2 text-amber-800">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          <span>Ghi chú</span>
+                        </div>
+                        <div className="space-y-1.5 text-xs text-amber-900">
+                          {order.notes.map((note, noteIndex) => (
+                            <p key={noteIndex}>
+                              <span className="font-bold">{note.dishName}:</span> {note.text}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {order.items.map((item, idx) => (
                       <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="flex items-start justify-between">
                           <h4 className="text-sm font-bold text-slate-900 leading-snug pr-2">{item.name}</h4>
                           <span className="text-base font-extrabold font-mono text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm">x{item.qty}</span>
                         </div>
-                        {item.note && (
-                          <div className={`mt-2.5 p-2 border rounded text-xs flex items-start gap-1.5 ${item.urgent ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
-                            <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.urgent ? 'text-rose-600' : (isActive ? 'text-blue-500' : 'text-amber-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span className={item.urgent ? 'font-medium' : ''}>{item.note}</span>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

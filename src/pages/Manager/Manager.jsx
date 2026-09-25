@@ -39,6 +39,18 @@ export default function Manager() {
   const [isDishModalOpen, setIsDishModalOpen] = useState(false);
   const [dishForm, setDishForm] = useState({ id: null, name: '', category: 'Món chính', unit: '', price: '', status: 'active' });
 
+  // TABLES STATES
+  const [tables, setTables] = useState([]);
+  const [tableSearch, setTableSearch] = useState('');
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [tableForm, setTableForm] = useState({ id: null, maBan: '', tenBan: '', soCho: '', trangThai: 'Trống' });
+
+  // PROMOTIONS STATES
+  const [promotions, setPromotions] = useState([]);
+  const [promotionSearch, setPromotionSearch] = useState('');
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
+  const [promotionForm, setPromotionForm] = useState({ id: null, maKM: '', tenKM: '', tienGiam: '', ngayKetThuc: '' });
+
   // SUPPLIERS STATES
   const [suppliers, setSuppliers] = useState(INITIAL_SUPPLIERS);
   const [supplierSearch, setSupplierSearch] = useState('');
@@ -84,6 +96,71 @@ export default function Manager() {
       showToast(`Đã thêm món "${dishForm.name}" vào thực đơn!`);
     }
     setIsDishModalOpen(false);
+  };
+
+  // --- TABLES LOGIC ---
+  const filteredTables = tables.filter(table =>
+    table.maBan.toLowerCase().includes(tableSearch.toLowerCase()) ||
+    table.tenBan.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
+  const openTableModal = (table = null) => {
+    if (table) setTableForm(table);
+    else setTableForm({ id: null, maBan: '', tenBan: '', soCho: '', trangThai: 'Trống' });
+    setIsTableModalOpen(true);
+  };
+
+  const handleSaveTable = (e) => {
+    e.preventDefault();
+    if (tableForm.id) {
+      setTables(tables.map(table => table.id === tableForm.id ? { ...tableForm, soCho: Number(tableForm.soCho) } : table));
+      showToast(`Đã cập nhật bàn "${tableForm.tenBan}" thành công!`);
+    } else {
+      const newId = tables.length > 0 ? Math.max(...tables.map(table => table.id)) + 1 : 1;
+      setTables([{ ...tableForm, id: newId, soCho: Number(tableForm.soCho), trangThai: 'Trống' }, ...tables]);
+      showToast(`Đã thêm bàn "${tableForm.tenBan}" thành công!`);
+    }
+    setIsTableModalOpen(false);
+  };
+
+  const handleDeleteTable = (table) => {
+    if (window.confirm(`Bạn có chắc muốn xóa bàn "${table.tenBan}"?`)) {
+      setTables(tables.filter(item => item.id !== table.id));
+      showToast(`Đã xóa bàn "${table.tenBan}" thành công!`);
+    }
+  };
+
+  // --- PROMOTIONS LOGIC ---
+  const filteredPromotions = promotions.filter(promotion =>
+    promotion.maKM.toLowerCase().includes(promotionSearch.toLowerCase()) ||
+    promotion.tenKM.toLowerCase().includes(promotionSearch.toLowerCase())
+  );
+
+  const openPromotionModal = (promotion = null) => {
+    if (promotion) setPromotionForm(promotion);
+    else setPromotionForm({ id: null, maKM: '', tenKM: '', tienGiam: '', ngayKetThuc: '' });
+    setIsPromotionModalOpen(true);
+  };
+
+  const handleSavePromotion = (e) => {
+    e.preventDefault();
+    const promotionData = { ...promotionForm, tienGiam: Number(promotionForm.tienGiam) };
+    if (promotionForm.id) {
+      setPromotions(promotions.map(promotion => promotion.id === promotionForm.id ? promotionData : promotion));
+      showToast(`Đã cập nhật khuyến mãi "${promotionForm.tenKM}" thành công!`);
+    } else {
+      const newId = promotions.length > 0 ? Math.max(...promotions.map(promotion => promotion.id)) + 1 : 1;
+      setPromotions([{ ...promotionData, id: newId }, ...promotions]);
+      showToast(`Đã thêm khuyến mãi "${promotionForm.tenKM}" thành công!`);
+    }
+    setIsPromotionModalOpen(false);
+  };
+
+  const handleDeletePromotion = (promotion) => {
+    if (window.confirm(`Bạn có chắc muốn xóa khuyến mãi "${promotion.tenKM}"?`)) {
+      setPromotions(promotions.filter(item => item.id !== promotion.id));
+      showToast(`Đã xóa khuyến mãi "${promotion.tenKM}" thành công!`);
+    }
   };
 
   // --- SUPPLIERS LOGIC ---
@@ -144,6 +221,16 @@ export default function Manager() {
         id: 'dishes',
         label: 'Món ăn',
         icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+      },
+      {
+        id: 'tables',
+        label: 'Bàn Ăn',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 10h16M4 14h16M7 6v12m10-12v12M5 6h14a1 1 0 011 1v10a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1z"></path></svg>
+      },
+      {
+        id: 'promotions',
+        label: 'Khuyến mãi',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l2-2 2 2 4-4m5-3.5V19a2 2 0 01-2 2H4a2 2 0 01-2-2V6.5a2 2 0 012-2h4.5L10 2h4l1.5 2.5H20a2 2 0 012 2z"></path></svg>
       },
       {
         id: 'suppliers',
@@ -268,7 +355,113 @@ export default function Manager() {
         </section>
       )}
 
-      {/* TAB 2: SUPPLIERS */}
+      {/* TAB 2: TABLES */}
+      {activeTab === 'tables' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Bàn Ăn</h1>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi mã bàn, số chỗ ngồi và trạng thái phục vụ</p>
+            </div>
+            <button onClick={() => openTableModal()} className="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>+ Thêm Bàn Ăn</span>
+            </button>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input value={tableSearch} onChange={e => setTableSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm mã bàn hoặc tên bàn..." type="text" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Mã Bàn</th><th className="py-3 px-4">Tên Bàn</th><th className="py-3 px-4 text-center">Số Chỗ</th><th className="py-3 px-4 text-center">Trạng Thái</th><th className="py-3 px-4 text-center w-32">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTables.map((table, idx) => (
+                    <tr key={table.id} className="hover:bg-blue-50/40 transition-colors group">
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-700">{table.maBan}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{table.tenBan}</td>
+                      <td className="py-3 px-4 text-center text-slate-600">{table.soCho} chỗ</td>
+                      <td className="py-3 px-4 text-center"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${table.trangThai === 'Trống' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}><span className="w-1 h-1 rounded-full bg-current mr-1.5"></span>{table.trangThai}</span></td>
+                      <td className="py-3 px-4 text-center space-x-1">
+                        <button onClick={() => openTableModal(table)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg><span className="text-[11px] font-medium">Sửa</span></button>
+                        <button onClick={() => handleDeleteTable(table)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"></path></svg><span className="text-[11px] font-medium">Xóa</span></button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredTables.length === 0 && <tr><td colSpan="6" className="py-12 text-center text-slate-400">Chưa có dữ liệu bàn ăn.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 3: PROMOTIONS */}
+      {activeTab === 'promotions' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Khuyến Mãi</h1>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi mã khuyến mãi, số tiền giảm và thời hạn áp dụng</p>
+            </div>
+            <button onClick={() => openPromotionModal()} className="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>+ Thêm Khuyến Mãi</span>
+            </button>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input value={promotionSearch} onChange={e => setPromotionSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm mã hoặc tên khuyến mãi..." type="text" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Mã KM</th><th className="py-3 px-4">Tên Khuyến Mãi</th><th className="py-3 px-4 text-right">Tiền Giảm</th><th className="py-3 px-4 text-center">Ngày Kết Thúc</th><th className="py-3 px-4 text-center w-32">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPromotions.map((promotion, idx) => (
+                    <tr key={promotion.id} className="hover:bg-blue-50/40 transition-colors group">
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-700">{promotion.maKM}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{promotion.tenKM}</td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-700">{formatCurrency(promotion.tienGiam)}</td>
+                      <td className="py-3 px-4 text-center text-slate-600 font-mono">{promotion.ngayKetThuc}</td>
+                      <td className="py-3 px-4 text-center space-x-1">
+                        <button onClick={() => openPromotionModal(promotion)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg><span className="text-[11px] font-medium">Sửa</span></button>
+                        <button onClick={() => handleDeletePromotion(promotion)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"></path></svg><span className="text-[11px] font-medium">Xóa</span></button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredPromotions.length === 0 && <tr><td colSpan="6" className="py-12 text-center text-slate-400">Chưa có dữ liệu khuyến mãi.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 4: SUPPLIERS */}
       {activeTab === 'suppliers' && (
         <section className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -549,6 +742,85 @@ export default function Manager() {
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
                 <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsDishModalOpen(false)} type="button">Hủy bỏ</button>
                 <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Món Ăn</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Table Modal */}
+      {isTableModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900">{tableForm.id ? 'Chỉnh Sửa Bàn Ăn' : 'Thêm Bàn Ăn Mới'}</h3>
+              <p className="text-xs text-slate-500 mt-1">Cập nhật thông tin bàn ăn của chi nhánh</p>
+            </div>
+            <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveTable}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mã Bàn <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono uppercase" required type="text" placeholder="VD: B01" value={tableForm.maBan} onChange={e => setTableForm({...tableForm, maBan: e.target.value.toUpperCase()})} />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tên Bàn <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" placeholder="VD: Bàn 01" value={tableForm.tenBan} onChange={e => setTableForm({...tableForm, tenBan: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Số Chỗ Ngồi <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required min="1" type="number" placeholder="VD: 2, 4, 6" value={tableForm.soCho} onChange={e => setTableForm({...tableForm, soCho: e.target.value})} />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Trạng Thái</label>
+                <select disabled={!tableForm.id} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs disabled:bg-slate-100 disabled:text-slate-500" value={tableForm.trangThai} onChange={e => setTableForm({...tableForm, trangThai: e.target.value})}>
+                  <option value="Trống">Trống</option>
+                  <option value="Đang sử dụng">Đang sử dụng</option>
+                  <option value="Đã đặt">Đã đặt</option>
+                </select>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsTableModalOpen(false)} type="button">Hủy</button>
+                <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Bàn Ăn</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Promotion Modal */}
+      {isPromotionModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900">{promotionForm.id ? 'Chỉnh Sửa Khuyến Mãi' : 'Thêm Khuyến Mãi Mới'}</h3>
+              <p className="text-xs text-slate-500 mt-1">Cập nhật thông tin chương trình khuyến mãi</p>
+            </div>
+            <form className="p-6 space-y-4 text-xs" onSubmit={handleSavePromotion}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mã Khuyến Mãi <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono uppercase" required type="text" placeholder="VD: KM10" value={promotionForm.maKM} onChange={e => setPromotionForm({...promotionForm, maKM: e.target.value.toUpperCase()})} />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tên Khuyến Mãi <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" placeholder="VD: Giảm 10%" value={promotionForm.tenKM} onChange={e => setPromotionForm({...promotionForm, tenKM: e.target.value})} />
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tiền Giảm (VND) <span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <input className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono" required min="0" step="1000" type="number" placeholder="VD: 50000" value={promotionForm.tienGiam} onChange={e => setPromotionForm({...promotionForm, tienGiam: e.target.value})} />
+                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 font-semibold">₫</span>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Ngày Kết Thúc <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="date" value={promotionForm.ngayKetThuc} onChange={e => setPromotionForm({...promotionForm, ngayKetThuc: e.target.value})} />
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsPromotionModalOpen(false)} type="button">Hủy</button>
+                <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Khuyến Mãi</button>
               </div>
             </form>
           </div>
