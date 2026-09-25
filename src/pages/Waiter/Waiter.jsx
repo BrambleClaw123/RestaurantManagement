@@ -408,12 +408,6 @@ export default function Waiter() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
                 <span>{selectedTable.status === 'empty' ? '+ Mở Bàn & Gọi Món' : selectedTable.status === 'reserved' ? '+ Bắt Đầu Phục Vụ' : '+ Thêm Món Vào Bàn'}</span>
               </button>
-              {selectedTable.status === 'serving' && selectedTable.orders.length > 0 && (
-                <button onClick={() => showToast(`Đã gửi tín hiệu GIỤC BẾP cho ${selectedTable.name}!`, 'info')} className="w-full py-2 px-3 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center space-x-1.5 transition">
-                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                  <span>Giục Bếp</span>
-                </button>
-              )}
             </div>
           </section>
         )}
