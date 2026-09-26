@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 
 // --- MOCK DATA ---
@@ -44,9 +44,16 @@ export default function Warehouse() {
   // GLOBAL STATES
   const [activeTab, setActiveTab] = useState('report'); // 'materials' | 'receipt' | 'report'
   const [toast, setToast] = useState(null);
+  const [materials, setMaterials] = useState(() => MATERIALS_DATA.map(material => ({
+    ...material,
+    defaultPrice: AVAILABLE_MATERIALS.find(item => item.name === material.name)?.defaultPrice || 0
+  })));
 
   // TAB 1: MATERIALS STATES
   const [materialSearch, setMaterialSearch] = useState('');
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState(null);
+  const [newMaterial, setNewMaterial] = useState({ name: '', unit: 'kg' });
 
   // TAB 2: RECEIPT STATES
   const [supplier, setSupplier] = useState('megafood');
@@ -81,14 +88,68 @@ export default function Warehouse() {
   };
 
   // --- TAB 1 LOGIC ---
-  const filteredMaterials = MATERIALS_DATA.filter(m => 
+  const filteredMaterials = materials.filter(m => 
     m.name.toLowerCase().includes(materialSearch.toLowerCase()) || 
     m.code.toLowerCase().includes(materialSearch.toLowerCase())
   );
 
+  const handleAddMaterial = (event) => {
+    event.preventDefault();
+    const name = newMaterial.name.trim();
+    if (!name) {
+      showToast('Không thể thêm nguyên vật liệu', 'Vui lòng nhập tên nguyên vật liệu.', true);
+      return;
+    }
+
+    const createdMaterial = {
+      code: `NVL-NEW-${Date.now().toString(36).toUpperCase()}`,
+      name,
+      note: '',
+      unit: newMaterial.unit,
+      stock: 0,
+      status: 'Hết hàng',
+      defaultPrice: 0,
+      id: `new-${Date.now()}`
+    };
+    setMaterials(prev => [...prev, createdMaterial]);
+    setNewMaterial({ name: '', unit: 'kg' });
+    setIsMaterialModalOpen(false);
+    showToast('Đã thêm nguyên vật liệu', `${name} đã sẵn sàng để chọn trong phiếu nhập kho.`);
+  };
+
+  const handleEditMaterial = (event) => {
+    event.preventDefault();
+    const name = editingMaterial.name.trim();
+    if (!name) {
+      showToast('Không thể cập nhật nguyên vật liệu', 'Vui lòng nhập tên nguyên vật liệu.', true);
+      return;
+    }
+
+    const previousMaterial = materials.find(material => material.code === editingMaterial.code);
+    setMaterials(prev => prev.map(material => material.code === editingMaterial.code
+      ? { ...material, name, unit: editingMaterial.unit }
+      : material
+    ));
+    if (previousMaterial && previousMaterial.name !== name) {
+      setReceiptRows(prev => prev.map(row => row.matName === previousMaterial.name
+        ? { ...row, matName: name, unit: editingMaterial.unit }
+        : row
+      ));
+      setEditingReceipt(prev => prev && ({
+        ...prev,
+        rows: prev.rows.map(row => row.matName === previousMaterial.name
+          ? { ...row, matName: name, unit: editingMaterial.unit }
+          : row
+        )
+      }));
+    }
+    setEditingMaterial(null);
+    showToast('Đã cập nhật nguyên vật liệu', `${name} đã được cập nhật thành công.`);
+  };
+
   // --- TAB 2 LOGIC ---
   const handleAddReceiptRow = () => {
-    const defaultMat = AVAILABLE_MATERIALS[0];
+    const defaultMat = materials[0];
     setReceiptRows([...receiptRows, { id: rowSequence, matName: defaultMat.name, unit: defaultMat.unit, quantity: 10, price: defaultMat.defaultPrice }]);
     setRowSequence(prev => prev + 1);
   };
@@ -102,7 +163,7 @@ export default function Warehouse() {
       if (row.id === id) {
         let updatedRow = { ...row, [field]: value };
         if (field === 'matName') {
-          const matchedItem = AVAILABLE_MATERIALS.find(m => m.name === value);
+          const matchedItem = materials.find(m => m.name === value);
           if (matchedItem) {
             updatedRow.unit = matchedItem.unit;
             updatedRow.price = matchedItem.defaultPrice;
@@ -156,7 +217,7 @@ export default function Warehouse() {
         if (row.id !== id) return row;
         const updatedRow = { ...row, [field]: value };
         if (field === 'matName') {
-          const matchedItem = AVAILABLE_MATERIALS.find(item => item.name === value);
+          const matchedItem = materials.find(item => item.name === value);
           if (matchedItem) {
             updatedRow.unit = matchedItem.unit;
             updatedRow.price = matchedItem.defaultPrice;
@@ -297,21 +358,21 @@ export default function Warehouse() {
       {/* TAB 1: NGUYÊN VẬT LIỆU */}
       {activeTab === 'materials' && (
         <div className="space-y-5 animate-in fade-in duration-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng mặt hàng</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{MATERIALS_DATA.length}</h3></div>
+              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng mặt hàng</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{materials.length}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeLinecap="round" strokeLinejoin="round"></path></svg></div>
             </div>
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Còn hàng ổn định</p><h3 className="text-2xl font-bold text-emerald-600 mt-1">{MATERIALS_DATA.filter(m => m.status === 'Còn hàng').length}</h3></div>
+              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Còn hàng ổn định</p><h3 className="text-2xl font-bold text-emerald-600 mt-1">{materials.filter(m => m.status === 'Còn hàng').length}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"></path></svg></div>
             </div>
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Sắp hết hàng</p><h3 className="text-2xl font-bold text-amber-600 mt-1">{MATERIALS_DATA.filter(m => m.status === 'Sắp hết').length}</h3></div>
+              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Sắp hết hàng</p><h3 className="text-2xl font-bold text-amber-600 mt-1">{materials.filter(m => m.status === 'Sắp hết').length}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round"></path></svg></div>
             </div>
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Đã hết hàng</p><h3 className="text-2xl font-bold text-rose-600 mt-1">{MATERIALS_DATA.filter(m => m.status === 'Hết hàng').length}</h3></div>
+              <div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Đã hết hàng</p><h3 className="text-2xl font-bold text-rose-600 mt-1">{materials.filter(m => m.status === 'Hết hàng').length}</h3></div>
               <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" strokeLinecap="round" strokeLinejoin="round"></path></svg></div>
             </div>
           </div>
@@ -326,6 +387,9 @@ export default function Warehouse() {
             <div className="flex items-center space-x-2.5">
               <button onClick={() => {setMaterialSearch(''); showToast('Làm mới', 'Dữ liệu tồn kho được đồng bộ tức thời.');}} className="inline-flex items-center px-3.5 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
                 <svg className="w-3.5 h-3.5 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg> Làm mới
+              </button>
+              <button onClick={() => setIsMaterialModalOpen(true)} className="inline-flex items-center px-3.5 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg> Thêm NVL
               </button>
               <button onClick={() => setActiveTab('receipt')} className="inline-flex items-center px-3.5 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
                 <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg> Lập phiếu nhập
@@ -349,9 +413,12 @@ export default function Warehouse() {
                       <td className="py-3 px-4 text-center text-slate-600 font-medium">{m.unit}</td>
                       <td className={`py-3 px-4 text-right font-mono font-bold ${m.status === 'Sắp hết' ? 'text-amber-700' : m.status === 'Hết hàng' ? 'text-rose-600' : 'text-slate-800'}`}>{m.stock.toFixed(1)}</td>
                       <td className="py-3 px-4 text-center">
-                        {m.status === 'Còn hàng' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Còn hàng</span>}
-                        {m.status === 'Sắp hết' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Sắp hết</span>}
-                        {m.status === 'Hết hàng' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">Hết hàng</span>}
+                        <div className="flex items-center justify-center gap-2">
+                          {m.status === 'Còn hàng' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Còn hàng</span>}
+                          {m.status === 'Sắp hết' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Sắp hết</span>}
+                          {m.status === 'Hết hàng' && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">Hết hàng</span>}
+                          <button type="button" onClick={() => setEditingMaterial({ code: m.code, name: m.name, unit: m.unit })} className="px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors">Sửa</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -360,7 +427,7 @@ export default function Warehouse() {
               </table>
             </div>
             <div className="p-3 bg-slate-50/60 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
-              <span>Hiển thị {filteredMaterials.length} trên tổng số {MATERIALS_DATA.length} nguyên vật liệu</span>
+              <span>Hiển thị {filteredMaterials.length} trên tổng số {materials.length} nguyên vật liệu</span>
             </div>
           </div>
         </div>
@@ -491,7 +558,7 @@ export default function Warehouse() {
                       <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-400">{index + 1}</td>
                       <td className="py-2.5 px-4">
                         <select value={row.matName} onChange={(e) => handleReceiptRowChange(row.id, 'matName', e.target.value)} className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-md py-1.5 px-2 outline-none focus:ring-1 focus:ring-blue-500">
-                          {AVAILABLE_MATERIALS.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                          {materials.map(m => <option key={m.id || m.code} value={m.name}>{m.name}</option>)}
                         </select>
                       </td>
                       <td className="py-2.5 px-3 text-center"><span className="inline-block px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">{row.unit}</span></td>
@@ -772,7 +839,7 @@ export default function Warehouse() {
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Danh mục hàng nhập</h4>
-                  <button onClick={() => setEditingReceipt(prev => ({ ...prev, rows: [...prev.rows, { id: Date.now(), matName: AVAILABLE_MATERIALS[0].name, unit: AVAILABLE_MATERIALS[0].unit, quantity: 1, price: AVAILABLE_MATERIALS[0].defaultPrice }] }))} className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
+                  <button onClick={() => setEditingReceipt(prev => ({ ...prev, rows: [...prev.rows, { id: Date.now(), matName: materials[0].name, unit: materials[0].unit, quantity: 1, price: materials[0].defaultPrice }] }))} className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
                     Thêm nguyên vật liệu
                   </button>
@@ -796,7 +863,7 @@ export default function Warehouse() {
                           <td className="py-2.5 px-3 text-center text-xs font-mono text-slate-400">{index + 1}</td>
                           <td className="py-2.5 px-3">
                             <select value={row.matName} onChange={e => handleEditReceiptRowChange(row.id, 'matName', e.target.value)} className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-md py-1.5 px-2 outline-none focus:ring-1 focus:ring-blue-500">
-                              {AVAILABLE_MATERIALS.map(material => <option key={material.id} value={material.name}>{material.name}</option>)}
+                              {materials.map(material => <option key={material.id || material.code} value={material.name}>{material.name}</option>)}
                             </select>
                           </td>
                           <td className="py-2.5 px-3 text-center"><span className="inline-block px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">{row.unit}</span></td>
@@ -824,6 +891,72 @@ export default function Warehouse() {
               <button onClick={handleSaveEditedReceipt} className="inline-flex items-center px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all"><svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>Lưu thay đổi</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ADD MATERIAL MODAL */}
+      {isMaterialModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form onSubmit={handleAddMaterial} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="font-bold text-lg text-slate-900">Thêm nguyên vật liệu</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Mã vật tư sẽ được hệ thống tự sinh.</p>
+              </div>
+              <button type="button" onClick={() => setIsMaterialModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200" title="Đóng">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên nguyên vật liệu <span className="text-rose-500">*</span></label>
+                <input required value={newMaterial.name} onChange={e => setNewMaterial(prev => ({ ...prev, name: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập tên nguyên vật liệu" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị <span className="text-rose-500">*</span></label>
+                <select value={newMaterial.unit} onChange={e => setNewMaterial(prev => ({ ...prev, unit: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="kg">kg</option><option value="quả">quả</option><option value="bình">bình</option><option value="khối">khối</option><option value="lít">lít</option><option value="gói">gói</option><option value="cái">cái</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 bg-slate-50/70">
+              <button type="button" onClick={() => setIsMaterialModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
+              <button type="submit" className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">Thêm NVL</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* EDIT MATERIAL MODAL */}
+      {editingMaterial && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <form onSubmit={handleEditMaterial} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="font-bold text-lg text-slate-900">Sửa nguyên vật liệu</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Chỉ chỉnh sửa tên và đơn vị của vật tư.</p>
+              </div>
+              <button type="button" onClick={() => setEditingMaterial(null)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200" title="Đóng">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên nguyên vật liệu <span className="text-rose-500">*</span></label>
+                <input required value={editingMaterial.name} onChange={e => setEditingMaterial(prev => ({ ...prev, name: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị <span className="text-rose-500">*</span></label>
+                <select value={editingMaterial.unit} onChange={e => setEditingMaterial(prev => ({ ...prev, unit: e.target.value }))} className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="kg">kg</option><option value="quả">quả</option><option value="bình">bình</option><option value="khối">khối</option><option value="lít">lít</option><option value="gói">gói</option><option value="cái">cái</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 bg-slate-50/70">
+              <button type="button" onClick={() => setEditingMaterial(null)} className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
+              <button type="submit" className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">Lưu thay đổi</button>
+            </div>
+          </form>
         </div>
       )}
 
