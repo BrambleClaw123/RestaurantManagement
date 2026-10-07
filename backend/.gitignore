@@ -1,0 +1,35 @@
+# === HỆ THỐNG & BẢN BUILD (BỎ QUA) ===
+target/
+build/
+.mvn/wrapper/maven-wrapper.jar
+
+# Bỏ qua tài liệu hướng dẫn mặc định nếu không cần thiết
+HELP.md
+
+# === CẤU HÌNH CÁC IDE TỰ SINH (BỎ QUA) ===
+# Dù bạn dùng IDE nào thì khi đẩy lên cũng bỏ qua hết để máy bạn của bạn tự tạo lại theo máy họ
+
+### STS (Spring Tool Suite) ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/

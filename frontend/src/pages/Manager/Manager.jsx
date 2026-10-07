@@ -1,0 +1,1071 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../../utils/api';
+import MainLayout from '../../components/layout/MainLayout';
+
+export default function Manager() {
+  // GLOBAL STATES
+  const [activeTab, setActiveTab] = useState('dishes');
+  const [toast, setToast] = useState(null);
+
+  // DISHES STATES
+  const [dishes, setDishes] = useState([]);
+  const [dishSearch, setDishSearch] = useState('');
+  const [dishCategory, setDishCategory] = useState('ALL');
+  const [isDishModalOpen, setIsDishModalOpen] = useState(false);
+  const [dishForm, setDishForm] = useState({ id: null, name: '', category: 'Món chính', unit: '', price: '', status: 'active' });
+
+  // TABLES STATES
+  const [tables, setTables] = useState([]);
+  const [tableSearch, setTableSearch] = useState('');
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [tableForm, setTableForm] = useState({ id: null, maBan: '', tenBan: '', soCho: '', trangThai: 'Trống' });
+
+  // PROMOTIONS STATES
+  const [promotions, setPromotions] = useState([]);
+  const [promotionSearch, setPromotionSearch] = useState('');
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
+  const [promotionForm, setPromotionForm] = useState({ id: null, maKM: '', tenKM: '', tienGiam: '', ngayKetThuc: '' });
+
+  // SUPPLIERS STATES
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [supplierForm, setSupplierForm] = useState({ id: null, name: '', phone: '' });
+
+  // REPORTS STATES
+  const [reportType, setReportType] = useState('revenue');
+  const [tuNgay, setTuNgay] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+  const [denNgay, setDenNgay] = useState(new Date().toISOString().split('T')[0]);
+  const [reportData, setReportData] = useState({ tongQuan: { tongDoanhThu: 0, tongHoaDon: 0, giaTriTrungBinhDon: 0, thucThuSauThue: 0 }, chiTietDanhSach: [] });
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+
+  useEffect(() => {
+    fetchDishes();
+    fetchTables();
+    fetchPromotions();
+    fetchSuppliers();
+  }, []);
+
+  const fetchDishes = async () => {
+    try {
+      const res = await api.get('/api/mon-an');
+      setDishes(res.map(d => ({
+        id: d.maMon,
+        name: d.tenMon,
+        category: d.loaiMon === 'MON_CHINH' ? 'Món chính' :
+          d.loaiMon === 'MON_KHAI_VI' ? 'Món khai vị' :
+            d.loaiMon === 'TRANG_MIENG' ? 'Tráng miệng' :
+              d.loaiMon === 'THUC_UONG' ? 'Thức uống' : 'Lẩu & Nướng',
+        unit: d.donViTinh === 'DIA' ? 'Đĩa' : d.donViTinh === 'NOI' ? 'Nồi' : d.donViTinh === 'LY' ? 'Ly' : 'Phần',
+        price: d.donGia,
+        status: d.trangThai === 'Còn món' ? 'active' : 'inactive'
+      })));
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchTables = async () => {
+    try {
+      const res = await api.get('/api/ban-an');
+      setTables(res.map(t => ({
+        id: t.maBan,
+        maBan: t.maBan,
+        tenBan: t.tenBan,
+        soCho: t.soCho,
+        trangThai: t.trangThai
+      })));
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchPromotions = async () => {
+    try {
+      const res = await api.get('/api/khuyen-mai');
+      setPromotions(res.map(p => ({
+        id: p.maKM,
+        maKM: p.maKM,
+        tenKM: p.tenKM,
+        tienGiam: p.tienGiam,
+        ngayKetThuc: p.ngayKetThuc ? p.ngayKetThuc.split('T')[0] : ''
+      })));
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const res = await api.get('/api/nha-cung-cap');
+      setSuppliers(res.map(s => ({
+        id: s.maNCC,
+        name: s.tenNCC,
+        phone: s.soDienThoai
+      })));
+    } catch (e) { console.error(e); }
+  };
+
+
+  const fetchReport = async () => {
+    try {
+      if (reportType === 'revenue') {
+        const res = await api.get('/api/bao-cao/doanh-thu', { params: { tuNgay, denNgay } });
+        setReportData(res);
+      } else if (reportType === 'inventory') {
+        const res = await api.get('/api/bao-cao/ton-kho', { params: { tuNgay, denNgay } });
+        setReportData(res);
+      } else if (reportType === 'topseller') {
+        const res = await api.get('/api/bao-cao/ban-chay', { params: { tuNgay, denNgay } });
+        setReportData(res);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Lỗi tải báo cáo: ' + (e.response?.data || e.message), false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReport();
+  }, [tuNgay, denNgay, reportType]);
+
+  const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+
+  const showToast = (message, isSuccess = true) => {
+    setToast({ message, isSuccess });
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  // --- DISHES LOGIC ---
+  const filteredDishes = dishes.filter(d => {
+    const matchSearch = d.name.toLowerCase().includes(dishSearch.toLowerCase());
+    const matchCat = dishCategory === 'ALL' || d.category === dishCategory;
+    return matchSearch && matchCat;
+  });
+
+  const totalDishes = dishes.length;
+  const activeDishes = dishes.filter(d => d.status === 'active').length;
+  const avgPrice = Math.round(dishes.reduce((sum, d) => sum + d.price, 0) / (totalDishes || 1));
+
+  const openDishModal = (dish = null) => {
+    if (dish) setDishForm(dish);
+    else setDishForm({ id: null, name: '', category: 'Món chính', unit: '', price: '', status: 'active' });
+    setIsDishModalOpen(true);
+  };
+
+  const handleSaveDish = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        tenMon: dishForm.name,
+        loaiMon: dishForm.category === 'Món chính' ? 'MON_CHINH' :
+          dishForm.category === 'Món khai vị' ? 'MON_KHAI_VI' :
+            dishForm.category === 'Tráng miệng' ? 'TRANG_MIENG' :
+              dishForm.category === 'Thức uống' ? 'THUC_UONG' : 'LAU_NUONG', donViTinh: dishForm.unit === 'Đĩa' ? 'DIA' : dishForm.unit === 'Nồi' ? 'NOI' : dishForm.unit === 'Ly' ? 'LY' : 'PHAN',
+        donGia: Number(dishForm.price),
+        trangThai: dishForm.status === 'active' ? 'Còn món' : 'Hết món'
+      };
+      if (dishForm.id) {
+        await api.put('/api/mon-an/' + dishForm.id, payload);
+        showToast(`Đã cập nhật món "${dishForm.name}" thành công!`);
+      } else {
+        await api.post('/api/mon-an', payload);
+        showToast(`Đã thêm món "${dishForm.name}" vào thực đơn!`);
+      }
+      setIsDishModalOpen(false);
+      fetchDishes();
+    } catch (e) { showToast('Lỗi: ' + (e.response?.data || e.message), false); }
+  };
+
+  // --- TABLES LOGIC ---
+  const filteredTables = tables.filter(table =>
+    table.maBan.toLowerCase().includes(tableSearch.toLowerCase()) ||
+    table.tenBan.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
+  const openTableModal = (table = null) => {
+    if (table) setTableForm(table);
+    else setTableForm({ id: null, maBan: '', tenBan: '', soCho: '', trangThai: 'Trống' });
+    setIsTableModalOpen(true);
+  };
+
+  const handleSaveTable = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        maBan: tableForm.maBan, // Bổ sung dòng này
+        tenBan: tableForm.tenBan,
+        soCho: Number(tableForm.soCho),
+        trangThai: tableForm.trangThai
+      }; if (tableForm.id) {
+        await api.put('/api/ban-an/' + tableForm.id, payload);
+        showToast(`Đã cập nhật bàn "${tableForm.tenBan}" thành công!`);
+      } else {
+        await api.post('/api/ban-an', payload);
+        showToast(`Đã thêm bàn "${tableForm.tenBan}" thành công!`);
+      }
+      setIsTableModalOpen(false);
+      fetchTables();
+    } catch (e) { showToast('Lỗi: ' + (e.response?.data || e.message), false); }
+  };
+
+  const handleDeleteTable = (table) => {
+    if (window.confirm(`Bạn có chắc muốn xóa bàn "${table.tenBan}"?`)) {
+      setTables(tables.filter(item => item.id !== table.id));
+      showToast(`Đã xóa bàn "${table.tenBan}" thành công!`);
+    }
+  };
+
+  // --- PROMOTIONS LOGIC ---
+  const filteredPromotions = promotions.filter(promotion =>
+    promotion.maKM.toLowerCase().includes(promotionSearch.toLowerCase()) ||
+    promotion.tenKM.toLowerCase().includes(promotionSearch.toLowerCase())
+  );
+
+  const openPromotionModal = (promotion = null) => {
+    if (promotion) setPromotionForm(promotion);
+    else setPromotionForm({ id: null, maKM: '', tenKM: '', tienGiam: '', ngayKetThuc: '' });
+    setIsPromotionModalOpen(true);
+  };
+
+  const handleSavePromotion = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        maKM: promotionForm.maKM, // Bổ sung trường này
+        tenKM: promotionForm.tenKM,
+        tienGiam: Number(promotionForm.tienGiam),
+        ngayKetThuc: promotionForm.ngayKetThuc
+      };
+      if (promotionForm.id) {
+        await api.put('/api/khuyen-mai/' + promotionForm.id, payload);
+        showToast(`Đã cập nhật khuyến mãi "${promotionForm.tenKM}" thành công!`);
+      } else {
+        await api.post('/api/khuyen-mai', payload);
+        showToast(`Đã thêm khuyến mãi "${promotionForm.tenKM}" thành công!`);
+      }
+      setIsPromotionModalOpen(false);
+      fetchPromotions();
+    } catch (e) { showToast('Lỗi: ' + (e.response?.data || e.message), false); }
+  };
+
+  const handleDeletePromotion = (promotion) => {
+    if (window.confirm(`Bạn có chắc muốn xóa khuyến mãi "${promotion.tenKM}"?`)) {
+      setPromotions(promotions.filter(item => item.id !== promotion.id));
+      showToast(`Đã xóa khuyến mãi "${promotion.tenKM}" thành công!`);
+    }
+  };
+
+  // --- SUPPLIERS LOGIC ---
+  const filteredSuppliers = suppliers.filter(s =>
+    s.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    s.phone.replace(/\s/g, '').includes(supplierSearch.replace(/\s/g, ''))
+  );
+
+  const getInitials = (name) => {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const openSupplierModal = (supplier = null) => {
+    if (supplier) setSupplierForm(supplier);
+    else setSupplierForm({ id: null, name: '', phone: '' });
+    setIsSupplierModalOpen(true);
+  };
+
+  const handleSaveSupplier = async (e) => {
+    e.preventDefault();
+    const phoneRegex = /^\d{10}$/; 
+    if (!phoneRegex.test(supplierForm.phone)) {
+      showToast('Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số.', false);
+      return;
+    }
+    try {
+      const payload = { tenNCC: supplierForm.name, soDienThoai: supplierForm.phone };
+      if (supplierForm.id) {
+        await api.put('/api/nha-cung-cap/' + supplierForm.id, payload);
+        showToast(`Đã cập nhật nhà cung cấp "${supplierForm.name}" thành công!`);
+      } else {
+        await api.post('/api/nha-cung-cap', payload);
+        showToast(`Đã thêm nhà cung cấp "${supplierForm.name}" thành công!`);
+      }
+      setIsSupplierModalOpen(false);
+      fetchSuppliers();
+    } catch (e) { showToast('Lỗi: ' + (e.response?.data || e.message), false); }
+  };
+
+  // --- REPORTS LOGIC ---
+  const handleExport = (format) => {
+    setIsExportMenuOpen(false);
+    if (format === 'excel') showToast('Đang xuất file Excel (.xlsx)...');
+    else showToast('Đang tạo bản in PDF...');
+  };
+
+  // --- CẤU HÌNH LAYOUT ---
+  const nexusUser = JSON.parse(localStorage.getItem('nexus_user') || '{}');
+  const userFullName = nexusUser.hoTen || 'Quan Ly';
+  let userNameInitials = 'QL';
+  if (userFullName) {
+    const parts = userFullName.trim().split(' ');
+    if (parts.length > 1) userNameInitials = (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase();
+    else userNameInitials = userFullName.substring(0, 2).toUpperCase();
+  }
+
+  const topbarProps = {
+    title: "Management",
+    tagText: "Trực Tuyến",
+    shiftInfo: "CA QUẢN LÝ (08:00 - 22:00)",
+    userInfo: { name: userFullName, role: "Quản Lý Nhà Hàng", initials: userNameInitials },
+    icon: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+  };
+
+  const sidebarProps = {
+    branchName: "CHI NHÁNH TRUNG TÂM",
+    activeTab,
+    setActiveTab,
+    userInfo: { name: userFullName, role: "Quản Lý Nhà Hàng", initials: userNameInitials },
+    navItems: [
+      {
+        id: 'dishes',
+        label: 'Món ăn',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+      },
+      {
+        id: 'tables',
+        label: 'Bàn Ăn',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 10h16M4 14h16M7 6v12m10-12v12M5 6h14a1 1 0 011 1v10a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1z"></path></svg>
+      },
+      {
+        id: 'promotions',
+        label: 'Khuyến mãi',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 14l2-2 2 2 4-4m5-3.5V19a2 2 0 01-2 2H4a2 2 0 01-2-2V6.5a2 2 0 012-2h4.5L10 2h4l1.5 2.5H20a2 2 0 012 2z"></path></svg>
+      },
+      {
+        id: 'suppliers',
+        label: 'Nhà cung cấp',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h2m-6 0a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4z"></path></svg>
+      },
+      {
+        id: 'reports',
+        label: 'Báo cáo',
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+      }
+    ]
+  };
+
+  return (
+    <MainLayout topbarProps={topbarProps} sidebarProps={sidebarProps}>
+
+      {/* TAB 1: DISHES */}
+      {activeTab === 'dishes' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Danh Sách Món Ăn</h1>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi, thêm mới và cập nhật trạng thái món ăn trong thực đơn của nhà hàng</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG SỐ MÓN</div><div className="text-2xl font-bold text-slate-900 mt-1">{totalDishes}</div></div>
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">CÒN PHỤC VỤ</div><div className="text-2xl font-bold text-emerald-600 mt-1">{activeDishes}</div></div>
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg></div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TẠM NGƯNG</div><div className="text-2xl font-bold text-amber-600 mt-1">{totalDishes - activeDishes}</div></div>
+              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">GIÁ BÁN TB</div><div className="text-2xl font-bold text-blue-700 mt-1">{formatCurrency(avgPrice)}</div></div>
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">₫</div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-80">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input value={dishSearch} onChange={e => setDishSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm nhanh tên món..." type="text" />
+              </div>
+              <div className="w-full sm:w-56">
+                <select value={dishCategory} onChange={e => setDishCategory(e.target.value)} className="w-full py-2 pl-3 pr-8 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 font-medium">
+                  <option value="ALL">Tất cả loại món</option>
+                  <option value="Món khai vị">Món khai vị</option>
+                  <option value="Món chính">Món chính</option>
+                  <option value="Lẩu & Nướng">Món lẩu & nướng</option>
+                  <option value="Tráng miệng">Tráng miệng</option>
+                  <option value="Thức uống">Thức uống</option>
+                </select>
+              </div>
+            </div>
+            <div className="w-full md:w-auto flex justify-end">
+              <button onClick={() => openDishModal()} className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Thêm Món Mới</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th>
+                    <th className="py-3 px-4">Tên Món Ăn</th><th className="py-3 px-4">Loại Món</th><th className="py-3 px-4 text-center">ĐVT</th><th className="py-3 px-4 text-right">Đơn Giá</th><th className="py-3 px-4 text-center">Trạng Thái</th><th className="py-3 px-4 text-center w-24">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredDishes.map((dish, idx) => {
+                    let catColor = "bg-slate-100 text-slate-700";
+                    if (dish.category === "Món khai vị") catColor = "bg-amber-50 text-amber-700 border-amber-200";
+                    else if (dish.category === "Món chính") catColor = "bg-blue-50 text-blue-700 border-blue-200";
+                    else if (dish.category === "Lẩu & Nướng") catColor = "bg-rose-50 text-rose-700 border-rose-200";
+                    else if (dish.category === "Tráng miệng") catColor = "bg-purple-50 text-purple-700 border-purple-200";
+                    else if (dish.category === "Thức uống") catColor = "bg-purple-50 text-purple-700 border-purple-200";
+
+                    return (
+                      <tr key={dish.id} className="hover:bg-blue-50/40 transition-colors group">
+                        <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                        <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{dish.name}</td>
+                        <td className="py-3 px-4"><span className={`px-2 py-0.5 rounded-md text-[11px] border font-medium ${catColor}`}>{dish.category}</span></td>
+                        <td className="py-3 px-4 text-center text-slate-600 font-medium">{dish.unit}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-slate-900 font-mono">{formatCurrency(dish.price)}</td>
+                        <td className="py-3 px-4 text-center">
+                          {dish.status === 'active' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5"></span>Còn phục vụ</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200"><span className="w-1 h-1 rounded-full bg-slate-400 mr-1.5"></span>Ngưng phục vụ</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button onClick={() => openDishModal(dish)} className="inline-flex items-center space-x-1 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            <span className="text-[11px] font-medium">Sửa</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {filteredDishes.length === 0 && (
+                    <tr><td colSpan="7" className="py-8 text-center text-slate-400">Không tìm thấy món ăn nào.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 2: TABLES */}
+      {activeTab === 'tables' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Bàn Ăn</h1>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi mã bàn, số chỗ ngồi và trạng thái phục vụ</p>
+            </div>
+            <button onClick={() => openTableModal()} className="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Thêm Bàn Ăn</span>
+            </button>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input value={tableSearch} onChange={e => setTableSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm mã bàn hoặc tên bàn..." type="text" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Mã Bàn</th><th className="py-3 px-4">Tên Bàn</th><th className="py-3 px-4 text-center">Số Chỗ</th><th className="py-3 px-4 text-center">Trạng Thái</th><th className="py-3 px-4 text-center w-32">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTables.map((table, idx) => (
+                    <tr key={table.id} className="hover:bg-blue-50/40 transition-colors group">
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-700">{table.maBan}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{table.tenBan}</td>
+                      <td className="py-3 px-4 text-center text-slate-600">{table.soCho} chỗ</td>
+                      <td className="py-3 px-4 text-center"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${table.trangThai === 'Trống' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}><span className="w-1 h-1 rounded-full bg-current mr-1.5"></span>{table.trangThai}</span></td>
+                      <td className="py-3 px-4 text-center space-x-1">
+                        <button onClick={() => openTableModal(table)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg><span className="text-[11px] font-medium">Sửa</span></button>
+                        <button onClick={() => handleDeleteTable(table)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"></path></svg><span className="text-[11px] font-medium">Xóa</span></button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredTables.length === 0 && <tr><td colSpan="6" className="py-12 text-center text-slate-400">Chưa có dữ liệu bàn ăn.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 3: PROMOTIONS */}
+      {activeTab === 'promotions' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Khuyến Mãi</h1>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi mã khuyến mãi, số tiền giảm và thời hạn áp dụng</p>
+            </div>
+            <button onClick={() => openPromotionModal()} className="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Thêm Khuyến Mãi</span>
+            </button>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input value={promotionSearch} onChange={e => setPromotionSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm mã hoặc tên khuyến mãi..." type="text" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Mã KM</th><th className="py-3 px-4">Tên Khuyến Mãi</th><th className="py-3 px-4 text-right">Tiền Giảm</th><th className="py-3 px-4 text-center">Ngày Kết Thúc</th><th className="py-3 px-4 text-center w-32">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPromotions.map((promotion, idx) => (
+                    <tr key={promotion.id} className="hover:bg-blue-50/40 transition-colors group">
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-700">{promotion.maKM}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{promotion.tenKM}</td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-700">{formatCurrency(promotion.tienGiam)}</td>
+                      <td className="py-3 px-4 text-center text-slate-600 font-mono">{promotion.ngayKetThuc?.split('-').reverse().join('/')}</td>
+                      <td className="py-3 px-4 text-center space-x-1">
+                        <button onClick={() => openPromotionModal(promotion)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg><span className="text-[11px] font-medium">Sửa</span></button>
+                        <button onClick={() => handleDeletePromotion(promotion)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-2 py-1 rounded transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"></path></svg><span className="text-[11px] font-medium">Xóa</span></button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredPromotions.length === 0 && <tr><td colSpan="6" className="py-12 text-center text-slate-400">Chưa có dữ liệu khuyến mãi.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 4: SUPPLIERS */}
+      {activeTab === 'suppliers' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Quản Lý Nhà Cung Cấp</h1>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Theo dõi, cập nhật thông tin đối tác cung ứng</p>
+            </div>
+            <button onClick={() => openSupplierModal()} className="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Thêm Nhà Cung Cấp</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+              <div><div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG SỐ ĐỐI TÁC</div><div className="text-2xl font-bold text-slate-900 mt-1">{suppliers.length}</div></div>
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input value={supplierSearch} onChange={e => setSupplierSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50/50" placeholder="Tìm tên nhà cung cấp hoặc số điện thoại..." type="text" />
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+            <div className="overflow-auto max-h-[480px]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-20 bg-slate-100">
+                  <tr className="border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                    <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Tên Nhà Cung Cấp</th><th className="py-3 px-4">Số Điện Thoại</th><th className="py-3 px-4 text-center w-28">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSuppliers.map((sup, idx) => (
+                    <tr key={sup.id} className="hover:bg-blue-50/40 transition-colors group">
+                      <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-lg ${sup.color} flex items-center justify-center font-bold text-xs border border-slate-200/50`}>{getInitials(sup.name)}</div>
+                          <div>
+                            <span className="font-medium text-slate-900 block text-xs leading-snug">{sup.name}</span>
+                            <span className="text-[11px] text-slate-400">Đối tác cung ứng</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-mono font-medium text-slate-700">
+                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                          <span>{sup.phone}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button onClick={() => openSupplierModal(sup)} className="inline-flex items-center space-x-1 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1 rounded transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                          <span className="text-[11px] font-medium">Sửa</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSuppliers.length === 0 && (
+                    <tr><td colSpan="4" className="py-8 text-center text-slate-400">Không tìm thấy nhà cung cấp nào.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* TAB 3: REPORTS */}
+      {activeTab === 'reports' && (
+        <section className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trung Tâm Báo Cáo & Thống Kê</h1>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Tổng hợp số liệu doanh thu, hàng tồn kho và hiệu suất bán hàng của nhà hàng</p>
+            </div>
+            <div className="flex items-center space-x-2 relative">
+              <button onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} className="inline-flex items-center space-x-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>Xuất Báo Cáo</span>
+              </button>
+              {isExportMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-30 divide-y divide-slate-100">
+                  <button onClick={() => handleExport('excel')} className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center space-x-2"><svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Xuất file Excel</span></button>
+                  <button onClick={() => handleExport('pdf')} className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-800 flex items-center space-x-2"><svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Xuất file PDF</span></button>
+                </div>
+              )}
+              <button onClick={() => window.print()} className="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <span>In Báo Cáo</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Loại Báo Cáo:</label>
+                <div className="inline-flex p-1 bg-slate-100 rounded-lg w-full">
+                  <button onClick={() => setReportType('revenue')} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'revenue' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Doanh Thu</button>
+                  <button onClick={() => setReportType('inventory')} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'inventory' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tồn Kho</button>
+                  <button onClick={() => setReportType('topseller')} className={`flex-1 py-1.5 px-3 rounded-md text-xs transition-all font-semibold ${reportType === 'topseller' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Bán Chạy</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Kỳ Báo Cáo:</label>
+                <div className="flex flex-col lg:flex-row items-center space-y-2 lg:space-y-0 lg:space-x-2 w-full lg:w-auto mt-2 lg:mt-0">
+                  <input type="date" value={tuNgay} onChange={e => setTuNgay(e.target.value)} className="py-2 px-3 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700" />
+                  <span className="text-slate-400 font-medium hidden lg:inline">-</span>
+                  <input type="date" value={denNgay} onChange={e => setDenNgay(e.target.value)} className="py-2 px-3 border border-slate-200 rounded-lg text-xs bg-slate-50/50 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700" />
+                  <button onClick={fetchReport} className="w-full lg:w-auto py-2 px-4 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-sm transition">Lọc</button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-l border-slate-100 pl-4">
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-slate-600">Dữ liệu báo cáo tự động</span>
+                </div>
+                <button onClick={() => showToast('Đã làm mới số liệu báo cáo thành công!')} className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-xs font-medium shadow-sm transition-colors">
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  <span>Làm mới</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* HIỂN THỊ NỘI DUNG TƯƠNG ỨNG VỚI LOẠI BÁO CÁO */}
+          {reportType === 'revenue' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG DOANH THU</span>
+                  <div className="text-2xl font-bold text-blue-600 mt-1">{formatCurrency(reportData.tongQuan?.tongDoanhThu || 0)}</div>
+
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG HÓA ĐƠN</span>
+                  <div className="text-2xl font-bold text-slate-900 mt-1">{reportData.tongQuan?.tongHoaDon || 0} đơn</div>
+
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">GIÁ TRỊ TB / ĐƠN</span>
+                  <div className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(reportData.tongQuan?.giaTriTrungBinhDon || 0)}</div>
+
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">THỰC THU SAU THUẾ</span>
+                  <div className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(reportData.tongQuan?.thucThuSauThue || 0)}</div>
+
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Chi Tiết Doanh Thu Theo Ngày Trong Kỳ</h4>
+                  <span className="text-xs text-slate-400">Đơn vị: Việt Nam Đồng</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                        <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Ngày Hoạt Động</th><th className="py-3 px-4 text-center">Số Lượng Đơn</th><th className="py-3 px-4 text-right">Doanh Số Bán</th><th className="py-3 px-4 text-right">Thuế VAT (8%)</th><th className="py-3 px-4 text-right">Thực Thu</th><th className="py-3 px-4 text-center">Đối Soát</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {reportData.chiTietDanhSach?.map((row, idx) => (
+                        <tr key={row.id} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-3 px-4 font-semibold text-slate-800">{row.ngayHoatDong?.split('-').reverse().join('/')}</td>
+                          <td className="py-3 px-4 text-center">{row.soLuongDon} đơn</td>
+                          <td className="py-3 px-4 text-right font-mono font-medium">{formatCurrency(row.doanhSoBan)}</td>
+                          <td className="py-3 px-4 text-right font-mono text-slate-500">{formatCurrency(row.thueVat)}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">{formatCurrency(row.thucThu)}</td>
+                          <td className="py-3 px-4 text-center"><span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-medium border border-emerald-200">Đã khớp</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-blue-50/50 font-bold border-t-2 border-slate-200 text-slate-900">
+                        <td colSpan="2" className="py-3.5 px-4 text-left uppercase">TỔNG CỘNG ĐẠI DIỆN:</td>
+                        <td className="py-3.5 px-4 text-center text-blue-700">{reportData.tongQuan?.tongHoaDon || 0} đơn</td>
+                        <td className="py-3.5 px-4 text-right font-mono text-blue-700">{formatCurrency(reportData.tongQuan?.tongDoanhThu || 0)}</td>
+                        <td className="py-3.5 px-4 text-right font-mono text-slate-600">{formatCurrency((reportData.tongQuan?.tongDoanhThu || 0) - (reportData.tongQuan?.thucThuSauThue || 0))}</td>
+                        <td className="py-3.5 px-4 text-right font-mono text-emerald-700 text-sm">{formatCurrency(reportData.tongQuan?.thucThuSauThue || 0)}</td>
+                        <td className="py-3.5 px-4 text-center text-emerald-600">-</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {reportType === 'inventory' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG SỐ MẶT HÀNG</span>
+                  <div className="text-2xl font-bold text-slate-900 mt-1">{reportData.tongQuan?.tongMaHang || 0}</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">MẶT HÀNG SẮP HẾT</span>
+                  <div className="text-2xl font-bold text-rose-600 mt-1">{reportData.tongQuan?.soLuongSapHet || 0}</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG TIỀN NHẬP KHO</span>
+                  <div className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(reportData.tongQuan?.tongTienNhapTrongKy || 0)}</div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Chi Tiết Tồn Kho</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                        <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Mã NVL</th><th className="py-3 px-4">Tên Nguyên Vật Liệu</th><th className="py-3 px-4 text-center">ĐVT</th><th className="py-3 px-4 text-right">Nhập Trong Kỳ</th><th className="py-3 px-4 text-right">Tồn Hiện Tại</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {reportData.chiTietDanhSach?.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-3 px-4 font-mono font-semibold text-slate-700">{row.maNVL}</td>
+                          <td className="py-3 px-4 font-semibold text-slate-800">{row.tenNVL}</td>
+                          <td className="py-3 px-4 text-center text-slate-500">{row.donVi}</td>
+                          <td className="py-3 px-4 text-right font-mono text-blue-600 font-medium">+{row.nhapTrongKy}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">{row.tonHienTai}</td>
+                        </tr>
+                      ))}
+                      {(!reportData.chiTietDanhSach || reportData.chiTietDanhSach.length === 0) && (
+                        <tr>
+                          <td colSpan="6" className="py-8 text-center text-slate-400">Không có dữ liệu tồn kho trong kỳ báo cáo này.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {reportType === 'topseller' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">MÓN BÁN CHẠY NHẤT</span>
+                  <div className="text-xl font-bold text-blue-600 mt-1 truncate" title={reportData.tongQuan?.monBanChayNhat || '-'}>{reportData.tongQuan?.monBanChayNhat || '-'}</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">TỔNG SỐ PHẦN BÁN RA</span>
+                  <div className="text-2xl font-bold text-slate-900 mt-1">{reportData.tongQuan?.tongSoPhanDaBan || 0}</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">DOANH THU TỪ MÓN ĂN</span>
+                  <div className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(reportData.tongQuan?.tongDoanhThuMon || 0)}</div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col flex-1">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Chi Tiết Bán Chạy Theo Món</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
+                        <th className="py-3 px-4 w-12 text-center">#</th><th className="py-3 px-4">Tên Món Ăn</th><th className="py-3 px-4">Loại Món</th><th className="py-3 px-4 text-center">Số Lượng Bán</th><th className="py-3 px-4 text-right">Doanh Thu Thu Được</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {reportData.chiTietDanhSach?.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-3 px-4 font-semibold text-slate-800">{row.tenMon}</td>
+                          <td className="py-3 px-4 text-slate-600">{row.loaiMon}</td>
+                          <td className="py-3 px-4 text-center font-mono font-bold text-blue-600">{row.soLuongBan}</td>
+                          <td className="py-3 px-4 text-right font-mono font-medium text-emerald-600">{formatCurrency(row.tongTienThuDuoc)}</td>
+                        </tr>
+                      ))}
+                      {(!reportData.chiTietDanhSach || reportData.chiTietDanhSach.length === 0) && (
+                        <tr>
+                          <td colSpan="5" className="py-8 text-center text-slate-400">Không có dữ liệu món bán chạy trong kỳ báo cáo này.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* MODALS */}
+      {/* Dish Modal */}
+      {isDishModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">{dishForm.id ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Ăn Mới'}</h3>
+                <p className="text-xs text-slate-500">Cập nhật thông thực đơn chi nhánh</p>
+              </div>
+            </div>
+            <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveDish}>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tên Món Ăn <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" value={dishForm.name} onChange={e => setDishForm({ ...dishForm, name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Loại Món <span className="text-rose-500">*</span></label>
+                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required value={dishForm.category} onChange={e => setDishForm({ ...dishForm, category: e.target.value })}>
+                    <option value="Món chính">Món chính</option>
+                    <option value="Món khai vị">Món khai vị</option>
+                    <option value="Lẩu & Nướng">Món lẩu & nướng</option>
+                    <option value="Tráng miệng">Tráng miệng</option>
+                    <option value="Thức uống">Thức uống</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Đơn Vị Tính <span className="text-rose-500">*</span></label>
+                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required value={dishForm.unit} onChange={e => setDishForm({ ...dishForm, unit: e.target.value })}>
+                    <option value="" disabled>Chọn đơn vị tính</option>
+                    <option value="Đĩa">Đĩa</option>
+                    <option value="Phần">Phần</option>
+                    <option value="Nồi">Nồi</option>
+                    <option value="Ly">Ly</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Đơn Giá Bán (VND) <span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs pr-10 font-mono" min="1000" required step="1000" type="number" value={dishForm.price} onChange={e => setDishForm({ ...dishForm, price: e.target.value })} />
+                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 font-semibold">₫</span>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-2">Trạng Thái Phục Vụ</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                    <input className="text-blue-600 focus:ring-blue-500" name="formDishStatus" type="radio" value="active" checked={dishForm.status === 'active'} onChange={() => setDishForm({ ...dishForm, status: 'active' })} />
+                    <span className="ml-2 text-xs font-medium text-emerald-700">Còn phục vụ</span>
+                  </label>
+                  <label className="flex items-center p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                    <input className="text-blue-600 focus:ring-blue-500" name="formDishStatus" type="radio" value="inactive" checked={dishForm.status === 'inactive'} onChange={() => setDishForm({ ...dishForm, status: 'inactive' })} />
+                    <span className="ml-2 text-xs font-medium text-slate-600">Ngưng phục vụ</span>
+                  </label>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsDishModalOpen(false)} type="button">Hủy bỏ</button>
+                <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Món Ăn</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Table Modal */}
+      {isTableModalOpen && (
+  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+      <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <h3 className="text-base font-bold text-slate-900">{tableForm.id ? 'Chỉnh Sửa Bàn Ăn' : 'Thêm Bàn Ăn Mới'}</h3>
+        <p className="text-xs text-slate-500 mt-1">Cập nhật thông tin bàn ăn của chi nhánh</p>
+      </div>
+      <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveTable}>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Mã Bàn <span className="text-rose-500">*</span></label>
+            <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono uppercase disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" required type="text" placeholder="VD: B01" value={tableForm.maBan} disabled={!!tableForm.id} onChange={e => setTableForm({ ...tableForm, maBan: e.target.value.toUpperCase() })} />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Tên Bàn <span className="text-rose-500">*</span></label>
+            <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" placeholder="VD: Bàn 01" value={tableForm.tenBan} onChange={e => setTableForm({ ...tableForm, tenBan: e.target.value })} />
+          </div>
+        </div>
+        <div>
+          <label className="block font-semibold text-slate-700 mb-1">Số Chỗ Ngồi <span className="text-rose-500">*</span></label>
+          <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required min="1" type="number" placeholder="VD: 2, 4, 6" value={tableForm.soCho} onChange={e => setTableForm({ ...tableForm, soCho: e.target.value })} />
+        </div>
+        <div>
+          <label className="block font-semibold text-slate-700 mb-1">Trạng Thái</label>
+          <select disabled={!tableForm.id} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs disabled:bg-slate-100 disabled:text-slate-500" value={tableForm.trangThai} onChange={e => setTableForm({ ...tableForm, trangThai: e.target.value })}>
+            <option value="Trống">Trống</option>
+            <option value="Đang sử dụng">Đang sử dụng</option>
+            <option value="Đã đặt">Đã đặt</option>
+          </select>
+        </div>
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+          <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsTableModalOpen(false)} type="button">Hủy</button>
+          <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Bàn Ăn</button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+
+      {/* Promotion Modal */}
+      {isPromotionModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-base font-bold text-slate-900">{promotionForm.id ? 'Chỉnh Sửa Khuyến Mãi' : 'Thêm Khuyến Mãi Mới'}</h3>
+              <p className="text-xs text-slate-500 mt-1">Cập nhật thông tin chương trình khuyến mãi</p>
+            </div>
+            <form className="p-6 space-y-4 text-xs" onSubmit={handleSavePromotion}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mã Khuyến Mãi <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono uppercase disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed" required type="text" placeholder="VD: KM10" value={promotionForm.maKM} disabled={!!promotionForm.id} onChange={e => setPromotionForm({ ...promotionForm, maKM: e.target.value.toUpperCase() })} />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tên Khuyến Mãi <span className="text-rose-500">*</span></label>
+                  <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" placeholder="VD: Giảm 10%" value={promotionForm.tenKM} onChange={e => setPromotionForm({ ...promotionForm, tenKM: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tiền Giảm (VND) <span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <input className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono" required min="0" step="1000" type="number" placeholder="VD: 50000" value={promotionForm.tienGiam} onChange={e => setPromotionForm({ ...promotionForm, tienGiam: e.target.value })} />
+                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 font-semibold">₫</span>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Ngày Kết Thúc <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="date" value={promotionForm.ngayKetThuc} onChange={e => setPromotionForm({ ...promotionForm, ngayKetThuc: e.target.value })} />
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsPromotionModalOpen(false)} type="button">Hủy</button>
+                <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Khuyến Mãi</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Supplier Modal */}
+      {isSupplierModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">{supplierForm.id ? 'Chỉnh Sửa Nhà Cung Cấp' : 'Thêm Nhà Cung Cấp Mới'}</h3>
+                <p className="text-xs text-slate-500">Cập nhật thông tin đối tác cung ứng</p>
+              </div>
+            </div>
+            <form className="p-6 space-y-4 text-xs" onSubmit={handleSaveSupplier}>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tên Nhà Cung Cấp <span className="text-rose-500">*</span></label>
+                <input className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" required type="text" value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Số Điện Thoại <span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <input className="w-full px-3 py-2 pl-9 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs font-mono" required type="tel" value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsSupplierModalOpen(false)} type="button">Hủy</button>
+                <button className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-colors" type="submit">Lưu Thông Tin</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 text-xs z-50 animate-in fade-in duration-300">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${toast.isSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
+
+    </MainLayout>
+  );
+}
