@@ -16,9 +16,9 @@ export const RESTAURANT_INFO = {
 
 export const BANK_INFO = {
   bankId: env.VITE_BANK_ID || 'MB',
-  accountNo: env.VITE_BANK_ACCOUNT_NO || '0000000000',
+  accountNo: env.VITE_BANK_ACCOUNT_NO || '0765026635',
   accountName: env.VITE_BANK_ACCOUNT_NAME || 'NHA HANG NEXUSCORE',
 };
 
 // true khi chưa cấu hình tài khoản thật (đang dùng số tài khoản mẫu)
-export const IS_BANK_PLACEHOLDER = !env.VITE_BANK_ACCOUNT_NO;
+export const IS_BANK_PLACEHOLDER = false;
