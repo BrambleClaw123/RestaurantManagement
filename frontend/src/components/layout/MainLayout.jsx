@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Topbar from './Topbar';
 import Sidebar from './Sidebar';
+import ChatWidget from '../chat/ChatWidget';
 
 export default function MainLayout({ topbarProps, sidebarProps, children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,6 +33,9 @@ export default function MainLayout({ topbarProps, sidebarProps, children }) {
           {children}
         </main>
       </div>
+
+      {/* Chatbot Gemini - hiển thị ở mọi vai trò */}
+      <ChatWidget />
     </div>
   );
 }
