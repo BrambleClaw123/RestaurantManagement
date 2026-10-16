@@ -4,6 +4,7 @@ import com.example.qlnh.dto.request.ChotHoaDonRequest;
 import com.example.qlnh.dto.response.ChiTietMonResponse;
 import com.example.qlnh.dto.response.ChiTietThanhToanResponse;
 import com.example.qlnh.dto.response.DanhSachBanPhucVuResponse;
+import com.example.qlnh.dto.response.HoaDonResponse;
 import com.example.qlnh.entity.BanAn;
 import com.example.qlnh.entity.ChiTietGoiMon;
 import com.example.qlnh.entity.HoaDon;
@@ -207,6 +208,37 @@ public class ThanhToanServiceImpl implements ThanhToanService {
         double tongThanhToan = tongTien + thueVAT - tienKhuyenMai;
         if (tongThanhToan < 0) tongThanhToan = 0.0;
 
+        // --- Xử lý phương thức thanh toán ---
+        String phuongThuc = request.getPhuongThucThanhToan() == null || request.getPhuongThucThanhToan().trim().isEmpty()
+                ? "TIEN_MAT" : request.getPhuongThucThanhToan().trim().toUpperCase();
+        if (!phuongThuc.equals("TIEN_MAT") && !phuongThuc.equals("CHUYEN_KHOAN") && !phuongThuc.equals("THE")) {
+            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ!");
+        }
+
+        String maGiaoDich = request.getMaGiaoDich() == null ? null : request.getMaGiaoDich().trim();
+        if (maGiaoDich != null && maGiaoDich.isEmpty()) maGiaoDich = null;
+
+        long phaiTra = Math.round(tongThanhToan); // Tiền thực tế khách phải đưa (làm tròn đến đồng)
+        double soTienKhachDua;
+        double tienThua = 0.0;
+        if (phuongThuc.equals("TIEN_MAT")) {
+            if (request.getSoTienKhachDua() == null) {
+                throw new IllegalArgumentException("Vui lòng nhập số tiền khách đưa!");
+            }
+            soTienKhachDua = request.getSoTienKhachDua();
+            if (soTienKhachDua < phaiTra) {
+                throw new IllegalArgumentException("Số tiền khách đưa chưa đủ! Còn thiếu "
+                        + String.format("%,d", phaiTra - Math.round(soTienKhachDua)) + " đ");
+            }
+            tienThua = soTienKhachDua - phaiTra;
+            maGiaoDich = null;
+        } else {
+            soTienKhachDua = phaiTra; // Chuyển khoản / quẹt thẻ: thu đúng số tiền hóa đơn
+            if (phuongThuc.equals("THE") && maGiaoDich == null) {
+                throw new IllegalArgumentException("Vui lòng nhập mã giao dịch (mã chuẩn chi) trên máy POS!");
+            }
+        }
+
         HoaDon hoaDon = new HoaDon();
         hoaDon.setPhieuGoiMon(phieu);
         hoaDon.setKhuyenMai(khuyenMaiApDung);
@@ -215,6 +247,10 @@ public class ThanhToanServiceImpl implements ThanhToanService {
         hoaDon.setThueVAT(thueVAT);
         hoaDon.setTienKhuyenMai(tienKhuyenMai);
         hoaDon.setTongThanhToan(tongThanhToan);
+        hoaDon.setPhuongThucThanhToan(phuongThuc);
+        hoaDon.setSoTienKhachDua(soTienKhachDua);
+        hoaDon.setTienThua(tienThua);
+        hoaDon.setMaGiaoDich(maGiaoDich);
         String maNV = securityUtil.getCurrentMaNV();
         if (maNV != null) {
             nhanVienRepository.findById(maNV).ifPresent(hoaDon::setNhanVien);
@@ -228,5 +264,34 @@ public class ThanhToanServiceImpl implements ThanhToanService {
         banAnRepository.save(ban);
 
         return "Thanh toán thành công! Bàn " + ban.getTenBan() + " đã được dọn trống.";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HoaDonResponse layHoaDon(Long maPhieuGM) {
+        HoaDon hd = hoaDonRepository.findByPhieuGoiMon_MaPhieuGM(maPhieuGM)
+                .orElseThrow(() -> new IllegalArgumentException("Phiếu gọi món #" + maPhieuGM + " chưa có hóa đơn!"));
+
+        ChiTietThanhToanResponse chiTiet = layChiTietThanhToan(maPhieuGM);
+
+        HoaDonResponse res = new HoaDonResponse();
+        res.setMaHD(hd.getMaHD());
+        res.setMaHoaDonHienThi(String.format("HD%06d", hd.getMaHD()));
+        res.setMaPhieuHienThi(chiTiet.getMaPhieuHienThi());
+        res.setTenBan(chiTiet.getTenBan());
+        res.setTenKhachHang(chiTiet.getTenKhachHang());
+        res.setTenNhanVien(hd.getNhanVien() != null ? hd.getNhanVien().getHoTen() : null);
+        res.setNgayGio(hd.getNgayGio());
+        res.setDanhSachMon(chiTiet.getDanhSachMon());
+        res.setTongTienMon(hd.getTongTien());
+        res.setMaKhuyenMai(hd.getKhuyenMai() != null ? hd.getKhuyenMai().getMaKM() : null);
+        res.setTienKhuyenMai(hd.getTienKhuyenMai());
+        res.setThueVAT(hd.getThueVAT());
+        res.setTongThanhToan(hd.getTongThanhToan());
+        res.setPhuongThucThanhToan(hd.getPhuongThucThanhToan() != null ? hd.getPhuongThucThanhToan() : "TIEN_MAT");
+        res.setSoTienKhachDua(hd.getSoTienKhachDua());
+        res.setTienThua(hd.getTienThua());
+        res.setMaGiaoDich(hd.getMaGiaoDich());
+        return res;
     }
 }

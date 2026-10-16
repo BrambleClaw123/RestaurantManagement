@@ -27,4 +27,10 @@ public class HoaDon {
     private Double tienKhuyenMai = 0.0;
     private Double thueVAT = 0.0;
     private Double tongThanhToan = 0.0;
+
+    // Thông tin thanh toán: TIEN_MAT | CHUYEN_KHOAN | THE
+    private String phuongThucThanhToan = "TIEN_MAT";
+    private Double soTienKhachDua;
+    private Double tienThua;
+    private String maGiaoDich; // Mã giao dịch chuyển khoản / mã chuẩn chi POS
 }

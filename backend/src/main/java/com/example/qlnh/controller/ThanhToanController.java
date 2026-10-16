@@ -51,6 +51,18 @@ public class ThanhToanController {
         }
     }
 
+    // API 4: Lấy hóa đơn đã chốt của một phiếu gọi món (dùng để in hóa đơn thanh toán)
+    @GetMapping("/hoa-don/{maPhieuGM}")
+    public ResponseEntity< ? > layHoaDon(@PathVariable Long maPhieuGM) {
+        try {
+            return ResponseEntity.ok(thanhToanService.layHoaDon(maPhieuGM));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Lỗi tải hóa đơn: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/ap-dung-khuyen-mai")
     public ResponseEntity< ? > apDungKhuyenMai(@RequestBody ApDungKhuyenMaiRequest request) {
         try {

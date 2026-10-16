@@ -18,4 +18,5 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Long> {
             "GROUP BY CAST(h.ngayGio AS date) ORDER BY CAST(h.ngayGio AS date) ASC")
     List<BaoCaoDoanhThuResponse.ChiTiet> layChiTietDoanhThu(@Param("tuNgay") LocalDateTime tuNgay, @Param("denNgay") LocalDateTime denNgay);
     boolean existsByPhieuGoiMon_MaPhieuGM(Long maPhieuGM);
+    java.util.Optional<HoaDon> findByPhieuGoiMon_MaPhieuGM(Long maPhieuGM);
 }

@@ -99,7 +99,11 @@ Tài liệu đặc tả toàn bộ các endpoints trong hệ thống dựa trên
 *   **`POST /api/thanh-toan/ap-dung-khuyen-mai`**
     *   **Body:** `{"maPhieuGM": 1, "maKM": "..."}`
 *   **`POST /api/thanh-toan/chot-hoa-don`**
-    *   **Body:** `{"maPhieuGM": 1, "maKM": "...", "phuongThuc": "...", "tongTienMon": 100, "tienGiam": 0, "thueVAT": 8, "thanhTien": 108}`
+    *   **Body:** `{"maPhieuGM": 1, "maKhuyenMai": "..." | null, "phuongThucThanhToan": "TIEN_MAT" | "CHUYEN_KHOAN" | "THE", "soTienKhachDua": 500000, "maGiaoDich": "..."}`
+    *   `TIEN_MAT`: bắt buộc `soTienKhachDua` ≥ tổng thanh toán (làm tròn đồng), hệ thống tính `tienThua`. `THE`: bắt buộc `maGiaoDich` (mã chuẩn chi POS). `CHUYEN_KHOAN`: `maGiaoDich` tùy chọn. Không gửi `phuongThucThanhToan` thì mặc định `TIEN_MAT`.
+    *   **Response:** chuỗi thông báo thành công (400 + thông báo lỗi nếu thiếu tiền/thiếu mã giao dịch/món chưa xong/…).
+*   **`GET /api/thanh-toan/hoa-don/{maPhieuGM}`** — lấy hóa đơn đã chốt để in hóa đơn thanh toán
+    *   **Response:** `{"maHD": 17, "maHoaDonHienThi": "HD000017", "maPhieuHienThi": "...", "tenBan": "...", "tenKhachHang": "...", "tenNhanVien": "...", "ngayGio": "2026-10-16T14:25:00", "danhSachMon": [{"tenMon": "...", "soLuong": 1, "donGia": 100, "thanhTien": 100}], "tongTienMon": 100, "maKhuyenMai": null, "tienKhuyenMai": 0, "thueVAT": 8, "tongThanhToan": 108, "phuongThucThanhToan": "TIEN_MAT", "soTienKhachDua": 200, "tienThua": 92, "maGiaoDich": null}`
 
 ### 5.2 PhieuDatBanController
 *   **`GET /api/phieu-dat-ban`**, **`GET /{id}`**, **`POST /api/phieu-dat-ban`**, **`PUT /{id}`**, **`DELETE /{id}`**

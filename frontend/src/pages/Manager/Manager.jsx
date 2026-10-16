@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
 import MainLayout from '../../components/layout/MainLayout';
+import { printReport, fmtDate, money, num } from '../../utils/print';
+import { exportReportExcel } from '../../utils/exportExcel';
 
 export default function Manager() {
   // GLOBAL STATES
@@ -293,9 +295,74 @@ export default function Manager() {
   // --- REPORTS LOGIC ---
   const handleExport = (format) => {
     setIsExportMenuOpen(false);
-    if (format === 'excel') showToast('Đang xuất file Excel (.xlsx)...');
-    else showToast('Đang tạo bản in PDF...');
+    if (format === 'excel') {
+      showToast('Đang xuất file Excel (.xlsx)...');
+      exportReportExcel(buildReportDoc()).catch((e) => showToast('Lỗi xuất Excel: ' + (e.message || e), false));
+    } else {
+      showToast('Chọn "Lưu dưới dạng PDF" trong hộp thoại in để lưu file PDF');
+      printReport(buildReportDoc());
+    }
   };
+
+  // Dữ liệu báo cáo đang xem (Doanh thu / Tồn kho / Bán chạy) — dùng chung cho In / Xuất PDF / Xuất Excel
+  const buildReportDoc = () => {
+    const rows = reportData.chiTietDanhSach || [];
+    const tq = reportData.tongQuan || {};
+    const base = {
+      period: `Từ ngày ${fmtDate(tuNgay)} đến ngày ${fmtDate(denNgay)}`,
+      signatures: ['Người lập báo cáo', 'Quản lý'],
+      printedBy: userFullName,
+    };
+    if (reportType === 'revenue') {
+      return ({
+        ...base,
+        title: 'Báo cáo doanh thu',
+        columns: [
+          { label: 'STT', align: 'c' }, { label: 'Ngày hoạt động', align: 'l' }, { label: 'Số đơn', align: 'c' },
+          { label: 'Doanh số bán', align: 'r' }, { label: 'Thuế VAT (8%)', align: 'r' }, { label: 'Thực thu', align: 'r' },
+        ],
+        rows: rows.map((r, i) => [i + 1, fmtDate(r.ngayHoatDong), r.soLuongDon, money(r.doanhSoBan), money(r.thueVat), money(r.thucThu)]),
+        summary: [
+          ['Tổng hóa đơn', `${tq.tongHoaDon || 0} đơn`],
+          ['Giá trị trung bình / đơn', money(tq.giaTriTrungBinhDon || 0)],
+          ['Tổng doanh thu', money(tq.tongDoanhThu || 0)],
+          ['Thực thu sau thuế', money(tq.thucThuSauThue || 0), true],
+        ],
+      });
+    } else if (reportType === 'inventory') {
+      return ({
+        ...base,
+        title: 'Báo cáo tồn kho',
+        columns: [
+          { label: 'STT', align: 'c' }, { label: 'Mã NVL', align: 'l' }, { label: 'Tên nguyên vật liệu', align: 'l' },
+          { label: 'ĐVT', align: 'c' }, { label: 'Nhập trong kỳ', align: 'r' }, { label: 'Tồn hiện tại', align: 'r' },
+        ],
+        rows: rows.map((r, i) => [i + 1, r.maNVL, r.tenNVL, r.donVi, num(r.nhapTrongKy, '+'), num(r.tonHienTai)]),
+        summary: [
+          ['Tổng số mặt hàng', tq.tongMaHang || 0],
+          ['Mặt hàng sắp hết', tq.soLuongSapHet || 0],
+          ['Tổng tiền nhập kho trong kỳ', money(tq.tongTienNhapTrongKy || 0), true],
+        ],
+      });
+    } else {
+      return ({
+        ...base,
+        title: 'Báo cáo món bán chạy',
+        columns: [
+          { label: 'STT', align: 'c' }, { label: 'Tên món ăn', align: 'l' }, { label: 'Loại món', align: 'l' },
+          { label: 'Số lượng bán', align: 'c' }, { label: 'Doanh thu', align: 'r' },
+        ],
+        rows: rows.map((r, i) => [i + 1, r.tenMon, r.loaiMon, r.soLuongBan, money(r.tongTienThuDuoc)]),
+        summary: [
+          ['Món bán chạy nhất', tq.monBanChayNhat || '-'],
+          ['Tổng số phần bán ra', tq.tongSoPhanDaBan || 0],
+          ['Doanh thu từ món ăn', money(tq.tongDoanhThuMon || 0), true],
+        ],
+      });
+    }
+  };
+
+  const handlePrintReport = () => printReport(buildReportDoc());
 
   // --- CẤU HÌNH LAYOUT ---
   const nexusUser = JSON.parse(localStorage.getItem('nexus_user') || '{}');
@@ -665,7 +732,7 @@ export default function Manager() {
                   <button onClick={() => handleExport('pdf')} className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-800 flex items-center space-x-2"><svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Xuất file PDF</span></button>
                 </div>
               )}
-              <button onClick={() => window.print()} className="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors">
+              <button onClick={handlePrintReport} className="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg shadow-sm transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 <span>In Báo Cáo</span>
               </button>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import { api } from '../../utils/api';
+import { printReport, fmtDateTime, fmtDate, fmtNumber, fmtMoney, money, num } from '../../utils/print';
+import { exportReportExcel } from '../../utils/exportExcel';
 
 // --- MOCK DATA ---
 
@@ -357,14 +359,84 @@ export default function Warehouse() {
 
   const reportTotals = { importedValue: reportData.tongNhapToanKho || 0, currentStockValue: reportData.tongTonKhoHienTai || 0 };
 
+  // In phiếu nhập kho đang lập (bản in riêng, không in giao diện web)
+  const handlePrintReceipt = () => {
+    if (receiptRows.length === 0) {
+      showToast('Chưa có mặt hàng để in', 'Vui lòng thêm ít nhất một nguyên vật liệu vào phiếu nhập.', true);
+      return;
+    }
+    const sup = suppliers.find(s => String(s.maNCC) === String(supplier));
+    printReport({
+      title: 'Phiếu nhập kho',
+      period: `Ngày lập: ${fmtDateTime(new Date())}`,
+      meta: [
+        ['Nhà cung cấp', sup?.tenNCC || '—'],
+        ['Lý do nhập kho', importReason || '—'],
+        ['Người lập phiếu', userName],
+      ],
+      columns: [
+        { label: 'STT', align: 'c' }, { label: 'Tên nguyên vật liệu', align: 'l' }, { label: 'ĐVT', align: 'c' },
+        { label: 'Số lượng', align: 'r' }, { label: 'Đơn giá (đ)', align: 'r' }, { label: 'Thành tiền (đ)', align: 'r' },
+      ],
+      rows: receiptRows.map((row, i) => [
+        i + 1, row.matName, row.unit, fmtNumber(row.quantity),
+        fmtNumber(row.price), fmtNumber((Number(row.quantity) || 0) * (Number(row.price) || 0)),
+      ]),
+      summary: [
+        ['Số mặt hàng nhập', `${receiptRows.length} món`],
+        ['Tổng tiền thanh toán', fmtMoney(receiptGrandTotal), true],
+      ],
+      signatures: ['Người lập phiếu', 'Thủ kho', 'Nhà cung cấp'],
+      printedBy: userName,
+    });
+  };
+
+  // Dữ liệu báo cáo tồn kho theo kỳ & bộ lọc đang chọn — dùng chung cho In / Xuất PDF / Xuất Excel
+  const buildReportDoc = () => {
+    const statusOf = (item) => {
+      const tt = item.trangThai || '';
+      if (tt === 'Hết hàng' || (item.tonKhoHienTai != null && item.tonKhoHienTai <= 0)) return 'Hết hàng';
+      if (tt === 'Sắp hết' || (item.tonKhoHienTai != null && item.tonKhoHienTai < 10)) return 'Sắp hết';
+      return 'Còn hàng';
+    };
+    return ({
+      title: 'Báo cáo tồn kho',
+      period: `Từ ngày ${fmtDate(reportStartDate)} đến ngày ${fmtDate(reportEndDate)}`,
+      meta: reportSearchKeyword ? [['Bộ lọc tìm kiếm', reportSearchKeyword]] : [],
+      columns: [
+        { label: 'STT', align: 'c' }, { label: 'Mã vật tư', align: 'l' }, { label: 'Tên nguyên vật liệu', align: 'l' },
+        { label: 'ĐVT', align: 'c' }, { label: 'Nhập trong kỳ', align: 'r' }, { label: 'Tồn kho hiện tại', align: 'r' }, { label: 'Trạng thái', align: 'c' },
+      ],
+      rows: filteredReportData.map((item, i) => [
+        i + 1, item.maNVL, item.tenNVL, item.donVi,
+        num(item.nhapTrongKy, '+'), num(item.tonKhoHienTai), statusOf(item),
+      ]),
+      summary: [
+        ['Tổng số mặt hàng', `${filteredReportData.length} vật tư`],
+        ['Tổng giá trị tiền nhập trong kỳ', money(reportData.tongTienNhapTrongKy || 0), true],
+      ],
+      signatures: ['Người lập báo cáo', 'Thủ kho', 'Quản lý'],
+      printedBy: userName,
+    });
+  };
+
+  const handlePrintReport = () => printReport(buildReportDoc());
+
   const handleFinalizeReport = () => {
     showToast('Đã Chốt Báo Cáo Tồn Kho Thành Công!', 'Kỳ báo cáo đã được chốt sổ tồn. Số liệu đã được đồng bộ lên hệ thống kế toán NexusCore.');
   };
 
   const executeExport = (format) => {
     setIsExportMenuOpen(false);
-    if (format === 'excel') showToast('Đang xuất file Excel (.xlsx)...', 'Báo cáo tồn kho đã được trích xuất dữ liệu thành công.');
-    if (format === 'pdf') showToast('Đang tạo bản in PDF...', 'Bản sao lưu trữ báo cáo tồn kho đã sẵn sàng tải về.');
+    if (format === 'excel') {
+      exportReportExcel(buildReportDoc())
+        .then(() => showToast('Đã xuất file Excel (.xlsx)', 'Báo cáo tồn kho đã được tải về máy.'))
+        .catch((e) => showToast('Lỗi xuất Excel', e.message || String(e), true));
+    }
+    if (format === 'pdf') {
+      showToast('Đang mở bản in PDF...', 'Chọn "Lưu dưới dạng PDF" trong hộp thoại in để lưu file.');
+      printReport(buildReportDoc());
+    }
   };
 
   // --- CẤU HÌNH LAYOUT ---
@@ -661,7 +733,7 @@ export default function Warehouse() {
           </div>
 
           <div className="flex items-center justify-end space-x-3 pt-2">
-            <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+            <button onClick={handlePrintReceipt} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
               <svg className="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg> In phiếu nhập
             </button>
             <button onClick={handleSaveReceipt} className="inline-flex items-center px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all">
@@ -780,7 +852,7 @@ export default function Warehouse() {
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <div className="text-xs text-slate-500 flex items-center space-x-1.5"><svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 01-18 0z"></path></svg><span>Tồn kho hiện tại được lấy trực tiếp từ dữ liệu tồn kho.</span></div>
             <div className="flex items-center space-x-3 relative">
-              <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">In Báo Cáo</button>
+              <button onClick={handlePrintReport} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">In Báo Cáo</button>
               <div className="relative inline-block text-left">
                 <button onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} className="inline-flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">Xuất Báo Cáo</button>
                 {isExportMenuOpen && (

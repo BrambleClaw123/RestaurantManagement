@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import { api } from '../../utils/api';
+import { printReceipt, PAYMENT_METHOD_LABELS } from '../../utils/print';
+import { BANK_INFO, IS_BANK_PLACEHOLDER } from '../../utils/restaurantConfig';
+
+// Mã phương thức gửi lên backend
+const PAYMENT_METHOD_CODES = { cash: 'TIEN_MAT', qr: 'CHUYEN_KHOAN', card: 'THE' };
 
 export default function Reception() {
   const [activeTab, setActiveTab] = useState('booking');
@@ -48,6 +53,11 @@ export default function Reception() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [billDetail, setBillDetail] = useState(null);
+  const [cashReceived, setCashReceived] = useState('');   // tiền khách đưa (tiền mặt)
+  const [txnCode, setTxnCode] = useState('');              // mã giao dịch (QR / thẻ POS)
+  const [qrConfirmed, setQrConfirmed] = useState(false);   // lễ tân xác nhận đã nhận tiền chuyển khoản
+  const [qrImageFailed, setQrImageFailed] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   // --- DATA FETCHING ---
   useEffect(() => {
@@ -110,6 +120,17 @@ export default function Reception() {
       setBillDetail(null);
     }
   }, [selectedServingTableId, servingTables]);
+
+  // Đổi bàn thanh toán -> xóa dữ liệu thanh toán/khuyến mãi của bàn trước
+  useEffect(() => {
+    setPaymentMethod('cash');
+    setCashReceived('');
+    setTxnCode('');
+    setQrConfirmed(false);
+    setQrImageFailed(false);
+    setAppliedPromo({ code: '', discount: 0, message: '', type: '' });
+    setPromoCodeInput('');
+  }, [selectedServingTableId]);
 
   const fetchBillDetail = async (maPhieuGM) => {
     try {
@@ -343,18 +364,121 @@ export default function Reception() {
     }
   };
 
+  // --- THANH TOÁN ---
+  const amountDue = Math.round(grandTotal);                                  // số tiền khách phải trả (đồng)
+  const cashNum = parseInt(String(cashReceived).replace(/\D/g, ''), 10) || 0;   // tiền khách đưa
+  const changeDue = cashNum - amountDue;                                     // >0: tiền thừa, <0: còn thiếu
+
+  // Gợi ý nhanh mệnh giá tiền khách đưa (vừa đủ + làm tròn lên các mốc thường gặp)
+  const cashSuggestions = (() => {
+    if (amountDue <= 0) return [];
+    const set = new Set([amountDue]);
+    [10000, 50000, 100000, 200000, 500000].forEach(step => set.add(Math.ceil(amountDue / step) * step));
+    return [...set].sort((a, b) => a - b).slice(0, 4);
+  })();
+
+  const canCheckout = !isPaying && (
+    paymentMethod === 'cash' ? cashNum >= amountDue :
+    paymentMethod === 'qr' ? qrConfirmed :
+    txnCode.trim().length > 0
+  );
+
+  const selectPaymentMethod = (id) => {
+    setPaymentMethod(id);
+    setTxnCode('');
+    setQrConfirmed(false);
+    setQrImageFailed(false);
+  };
+
+  const qrImageUrl = selectedBill
+    ? `https://img.vietqr.io/image/${BANK_INFO.bankId}-${BANK_INFO.accountNo}-compact2.png?amount=${amountDue}` +
+      `&addInfo=${encodeURIComponent('TT ' + String(selectedBill.orderCode).replace(/[^A-Za-z0-9]/g, ''))}` +
+      `&accountName=${encodeURIComponent(BANK_INFO.accountName)}`
+    : '';
+
+  // In phiếu tạm tính (chưa thanh toán)
+  const handlePrintProvisional = () => {
+    if (!selectedBill || !billDetail) return;
+    printReceipt({
+      kind: 'provisional',
+      code: selectedBill.orderCode,
+      table: selectedBill.tableId,
+      customer: selectedBill.customer,
+      cashier: userFullName,
+      dateTime: new Date(),
+      items: billItems,
+      subtotal,
+      discount: discountAmount,
+      promoCode: appliedPromo.code,
+      vat: vatAmount,
+      total: grandTotal
+    });
+  };
+
+  // In hóa đơn thanh toán (sau khi chốt)
+  const handlePrintInvoice = () => {
+    if (!successData?.receipt) return;
+    printReceipt(successData.receipt);
+  };
+
   const handleCheckout = async () => {
-    if (!selectedBill || !selectedBill.maPhieuGM) return;
+    if (!selectedBill || !selectedBill.maPhieuGM || isPaying) return;
+    if (!canCheckout) {
+      showToast(
+        paymentMethod === 'cash' ? 'Số tiền khách đưa chưa đủ!' :
+        paymentMethod === 'qr' ? 'Vui lòng xác nhận đã nhận được tiền chuyển khoản!' :
+        'Vui lòng nhập mã giao dịch trên máy POS!', false);
+      return;
+    }
+    setIsPaying(true);
     try {
+      const maPhieuGM = selectedBill.maPhieuGM;
       await api.post('/api/thanh-toan/chot-hoa-don', {
-        maPhieuGM: selectedBill.maPhieuGM,
-        maKhuyenMai: appliedPromo.code || null
+        maPhieuGM,
+        maKhuyenMai: appliedPromo.code || null,
+        phuongThucThanhToan: PAYMENT_METHOD_CODES[paymentMethod],
+        soTienKhachDua: paymentMethod === 'cash' ? cashNum : null,
+        maGiaoDich: paymentMethod === 'cash' ? null : (txnCode.trim() || null)
       });
-      const methodNames = { cash: 'Tiền mặt', qr: 'Chuyển khoản QR (VietQR)', card: 'Thẻ POS ngân hàng' };
+
+      // Lấy hóa đơn vừa chốt từ server (mã HĐ, thu ngân, giờ thanh toán thật)
+      let invoice = null;
+      try { invoice = await api.get(`/api/thanh-toan/hoa-don/${maPhieuGM}`); }
+      catch (err) { console.error('Không tải được hóa đơn để in:', err); }
+
+      const methodCode = PAYMENT_METHOD_CODES[paymentMethod];
+      const received = paymentMethod === 'cash' ? cashNum : amountDue;
+      const change = paymentMethod === 'cash' ? changeDue : 0;
+      const receipt = {
+        kind: 'invoice',
+        code: invoice?.maHoaDonHienThi || `INV-${selectedBill.orderCode}`,
+        orderCode: selectedBill.orderCode,
+        table: selectedBill.tableId,
+        customer: selectedBill.customer,
+        cashier: invoice?.tenNhanVien || userFullName,
+        dateTime: invoice?.ngayGio || new Date(),
+        items: invoice?.danhSachMon || billItems,
+        subtotal: invoice?.tongTienMon ?? subtotal,
+        discount: invoice?.tienKhuyenMai ?? discountAmount,
+        promoCode: invoice?.maKhuyenMai || appliedPromo.code,
+        vat: invoice?.thueVAT ?? vatAmount,
+        total: invoice?.tongThanhToan ?? grandTotal,
+        payment: {
+          method: invoice?.phuongThucThanhToan || methodCode,
+          received: invoice?.soTienKhachDua ?? received,
+          change: invoice?.tienThua ?? change,
+          ref: invoice?.maGiaoDich || (paymentMethod === 'cash' ? '' : txnCode.trim())
+        }
+      };
+
       setSuccessData({
-        code: `INV-${selectedBill.orderCode}`,
-        total: formatCurrency(grandTotal),
-        method: methodNames[paymentMethod],
+        code: receipt.code,
+        total: formatCurrency(receipt.total),
+        method: PAYMENT_METHOD_LABELS[receipt.payment.method],
+        isCash: receipt.payment.method === 'TIEN_MAT',
+        received: formatCurrency(receipt.payment.received),
+        change: formatCurrency(receipt.payment.change),
+        receipt,
         desc: `Hóa đơn ${selectedBill.tableId} (${selectedBill.customer}) đã hoàn tất thanh toán. Bàn đã được dọn và chuyển về trạng thái sẵn sàng!`
       });
       setIsSuccessModalOpen(true);
@@ -362,6 +486,8 @@ export default function Reception() {
       fetchAllTables();
     } catch (e) {
       alert('Lỗi thanh toán: ' + (e.response?.data || e.message || e));
+    } finally {
+      setIsPaying(false);
     }
   };
 
@@ -371,6 +497,10 @@ export default function Reception() {
     setAppliedPromo({ code: '', discount: 0, message: '', type: '' });
     setPromoCodeInput('');
     setBillDetail(null);
+    setPaymentMethod('cash');
+    setCashReceived('');
+    setTxnCode('');
+    setQrConfirmed(false);
   };
 
   const topbarProps = {
@@ -727,7 +857,7 @@ export default function Reception() {
                           { id: 'qr', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>, label: 'Mã QR' },
                           { id: 'card', icon: <path strokeLinecap="round" strokeWidth="1.8" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>, label: 'Thẻ POS' }
                         ].map(m => (
-                          <button key={m.id} onClick={() => setPaymentMethod(m.id)} className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${paymentMethod === m.id ? 'border-2 border-blue-600 bg-blue-50/50 text-blue-700' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'}`}>
+                          <button key={m.id} onClick={() => selectPaymentMethod(m.id)} className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all ${paymentMethod === m.id ? 'border-2 border-blue-600 bg-blue-50/50 text-blue-700' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'}`}>
                             <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">{m.icon}</svg>
                             <span className="text-[11px] font-bold">{m.label}</span>
                           </button>
@@ -735,12 +865,82 @@ export default function Reception() {
                       </div>
                     </div>
 
+                    {/* Chi tiết theo phương thức thanh toán */}
+                    {paymentMethod === 'cash' && (
+                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                        <label className="block text-xs font-semibold text-slate-700">Tiền khách đưa</label>
+                        <div className="relative">
+                          <input
+                            className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-lg text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                            inputMode="numeric"
+                            placeholder="Nhập số tiền khách đưa..."
+                            type="text"
+                            value={cashNum ? new Intl.NumberFormat('vi-VN').format(cashNum) : ''}
+                            onChange={e => setCashReceived(e.target.value)}
+                          />
+                          <span className="absolute right-3 top-2 text-xs text-slate-400">đ</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cashSuggestions.map(v => (
+                            <button key={v} type="button" onClick={() => setCashReceived(String(v))} className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${cashNum === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'}`}>
+                              {v === amountDue ? 'Vừa đủ' : new Intl.NumberFormat('vi-VN').format(v)}
+                            </button>
+                          ))}
+                        </div>
+                        <div className={`flex justify-between items-baseline pt-2 border-t border-slate-200 text-xs font-semibold ${cashNum === 0 ? 'text-slate-400' : changeDue >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                          <span>{cashNum === 0 ? 'Tiền thừa trả khách' : changeDue >= 0 ? 'Tiền thừa trả khách' : 'Còn thiếu'}</span>
+                          <span className="text-base font-black font-mono">{cashNum === 0 ? '—' : formatCurrency(Math.abs(changeDue))}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'qr' && (
+                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        <div className="flex flex-col items-center">
+                          {!qrImageFailed ? (
+                            <img
+                              key={qrImageUrl}
+                              src={qrImageUrl}
+                              alt="Mã QR chuyển khoản"
+                              className="w-52 h-auto rounded-lg border border-slate-200 bg-white"
+                              onError={() => setQrImageFailed(true)}
+                            />
+                          ) : (
+                            <div className="w-full p-3 text-center text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                              Không tải được mã QR (kiểm tra kết nối mạng). Khách có thể chuyển khoản thủ công theo thông tin bên dưới.
+                            </div>
+                          )}
+                          <div className="mt-2 text-center text-[11px] text-slate-600 leading-relaxed">
+                            <div><span className="text-slate-400">Ngân hàng:</span> <span className="font-semibold text-slate-800">{BANK_INFO.bankId}</span> · <span className="text-slate-400">STK:</span> <span className="font-mono font-semibold text-slate-800">{BANK_INFO.accountNo}</span></div>
+                            <div><span className="text-slate-400">Chủ TK:</span> <span className="font-semibold text-slate-800">{BANK_INFO.accountName}</span></div>
+                            <div><span className="text-slate-400">Số tiền:</span> <span className="font-bold text-blue-600">{formatCurrency(amountDue)}</span></div>
+                          </div>
+                          {IS_BANK_PLACEHOLDER && (
+                            <div className="mt-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 text-center">Đang dùng tài khoản mẫu — cấu hình VITE_BANK_* trong .env để dùng tài khoản thật</div>
+                          )}
+                        </div>
+                        <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mã giao dịch ngân hàng (không bắt buộc)" type="text" value={txnCode} onChange={e => setTxnCode(e.target.value)} />
+                        <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                          <input className="mt-0.5 w-4 h-4 accent-blue-600" type="checkbox" checked={qrConfirmed} onChange={e => setQrConfirmed(e.target.checked)} />
+                          <span>Tôi đã kiểm tra và <b>nhận đủ {formatCurrency(amountDue)}</b> trong tài khoản</span>
+                        </label>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'card' && (
+                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+                        <div className="text-xs text-slate-600">Quẹt/chạm thẻ trên máy POS với số tiền <span className="font-bold text-blue-600">{formatCurrency(amountDue)}</span>, sau đó nhập mã giao dịch in trên biên lai POS.</div>
+                        <label className="block text-xs font-semibold text-slate-700">Mã giao dịch / mã chuẩn chi <span className="text-rose-500">*</span></label>
+                        <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ví dụ: 123456" type="text" value={txnCode} onChange={e => setTxnCode(e.target.value)} />
+                      </div>
+                    )}
+
                     <div className="pt-1 pb-4">
-                      <button className="w-full py-2.5 px-4 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 mb-3" onClick={() => window.print()}>
+                      <button className="w-full py-2.5 px-4 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 mb-3" onClick={handlePrintProvisional}>
                         <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         <span>In Hóa Đơn Tạm Tính</span>
                       </button>
-                      <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2" onClick={handleCheckout}>
+                      <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600" disabled={!canCheckout} onClick={handleCheckout}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                         <span>Hoàn Tất Thanh Toán ({formatCurrency(grandTotal)})</span>
                       </button>
@@ -840,9 +1040,15 @@ export default function Reception() {
               <div className="flex justify-between"><span className="text-slate-500">Mã hóa đơn:</span><span className="font-mono font-bold text-slate-800">{successData.code}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Tổng thanh toán:</span><span className="font-bold text-blue-600">{successData.total}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Hình thức:</span><span className="font-medium text-slate-700">{successData.method}</span></div>
+              {successData.isCash && (
+                <>
+                  <div className="flex justify-between"><span className="text-slate-500">Tiền khách đưa:</span><span className="font-medium text-slate-700">{successData.received}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Tiền thừa trả khách:</span><span className="font-bold text-emerald-600">{successData.change}</span></div>
+                </>
+              )}
             </div>
             <div className="flex gap-2">
-              <button className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1.5" onClick={() => { alert('In hóa đơn thành công!'); closeSuccessModal(); }}>
+              <button className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-1.5" onClick={handlePrintInvoice}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> In Hóa Đơn
               </button>
               <button className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm" onClick={closeSuccessModal}>Đóng & Tiếp Tục</button>
